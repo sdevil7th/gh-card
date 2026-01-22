@@ -31,6 +31,12 @@ export async function GET(request: NextRequest) {
     return new Response("Username is required", { status: 400 });
   }
 
+  if (!process.env.GITHUB_TOKEN) {
+    return new Response("GITHUB_TOKEN is missing in environment variables", {
+      status: 500,
+    });
+  }
+
   try {
     const data = await fetchGithubData(username);
     const [regularData, boldData] = await Promise.all([
@@ -68,7 +74,7 @@ export async function GET(request: NextRequest) {
       },
     );
   } catch (e: any) {
-    console.error(e);
+    console.error("OG Generation Error:", e);
     return new Response(`Failed to generate image: ${e.message}`, {
       status: 500,
     });

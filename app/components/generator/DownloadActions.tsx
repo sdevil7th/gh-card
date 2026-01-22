@@ -13,13 +13,14 @@ export function DownloadActions({ username }: DownloadActionsProps) {
   const [origin, setOrigin] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
   const [format, setFormat] = useState<"png" | "svg">("png");
+  const [size, setSize] = useState<"large" | "small">("large");
 
   // Wait for client to get window location
   useEffect(() => {
     setOrigin(window.location.origin);
   }, []);
 
-  const imageUrl = `${origin}/api/og?username=${username}&format=${format}`;
+  const imageUrl = `${origin}/api/og?username=${username}&format=${format}&size=${size}`;
   const repoUrl = `https://github.com/${username}`; // Link to profile for now
 
   const formats = {
@@ -37,7 +38,7 @@ export function DownloadActions({ username }: DownloadActionsProps) {
 
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${username}-github-card.${format}`;
+      link.download = `${username}-github-card-${size}.${format}`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -55,28 +56,74 @@ export function DownloadActions({ username }: DownloadActionsProps) {
 
   return (
     <div className="flex flex-col items-center w-full max-w-2xl mt-12 gap-8 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
-      {/* Format Selector */}
-      <GlassPanel intensity="low" className="flex p-1 gap-1 rounded-xl">
-        <button
-          onClick={() => setFormat("png")}
-          className={`px-6 py-2 rounded-lg text-sm font-medium transition-all ${
-            format === "png"
-              ? "bg-indigo-500 text-white shadow-lg"
-              : "text-slate-400 hover:text-white"
-          }`}
-        >
-          PNG
-        </button>
-        <button
-          onClick={() => setFormat("svg")}
-          className={`px-6 py-2 rounded-lg text-sm font-medium transition-all ${
-            format === "svg"
-              ? "bg-indigo-500 text-white shadow-lg"
-              : "text-slate-400 hover:text-white"
-          }`}
-        >
-          SVG
-        </button>
+      {/* Controls Container */}
+      <GlassPanel
+        intensity="low"
+        className="flex flex-col gap-4 p-4 rounded-2xl w-full items-center"
+      >
+        {/* Size Selector */}
+        <div className="flex flex-col items-center gap-2 w-full">
+          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            Card Size
+          </span>
+          <div className="flex bg-black/20 p-1 rounded-lg w-full max-w-md">
+            <button
+              onClick={() => setSize("large")}
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+                size === "large"
+                  ? "bg-indigo-500 text-white shadow-md"
+                  : "text-slate-400 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              Social Media{" "}
+              <span className="text-xs opacity-60 ml-1 hidden sm:inline">
+                (1200x630)
+              </span>
+            </button>
+            <button
+              onClick={() => setSize("small")}
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+                size === "small"
+                  ? "bg-indigo-500 text-white shadow-md"
+                  : "text-slate-400 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              README{" "}
+              <span className="text-xs opacity-60 ml-1 hidden sm:inline">
+                (500x280)
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* Format Selector */}
+        <div className="flex flex-col items-center gap-2 w-full">
+          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            Format
+          </span>
+          <div className="flex bg-black/20 p-1 rounded-lg w-full max-w-xs">
+            <button
+              onClick={() => setFormat("png")}
+              className={`flex-1 py-1.5 px-4 rounded-md text-sm font-medium transition-all ${
+                format === "png"
+                  ? "bg-indigo-500 text-white shadow-md"
+                  : "text-slate-400 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              PNG
+            </button>
+            <button
+              onClick={() => setFormat("svg")}
+              className={`flex-1 py-1.5 px-4 rounded-md text-sm font-medium transition-all ${
+                format === "svg"
+                  ? "bg-indigo-500 text-white shadow-md"
+                  : "text-slate-400 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              SVG
+            </button>
+          </div>
+        </div>
       </GlassPanel>
 
       {/* Primary Actions */}
@@ -85,7 +132,7 @@ export function DownloadActions({ username }: DownloadActionsProps) {
           onClick={downloadImage}
           variant="primary"
           size="lg"
-          className="shadow-indigo-500/20 shadow-lg"
+          className="shadow-indigo-500/20 shadow-lg min-w-[200px]"
         >
           Download {format.toUpperCase()}
         </Button>
@@ -94,15 +141,20 @@ export function DownloadActions({ username }: DownloadActionsProps) {
           variant="outline"
           size="lg"
         >
-          Open in New Tab
+          Open Preview
         </Button>
       </div>
 
       {/* Export Options */}
       <GlassPanel intensity="medium" className="w-full p-8 flex flex-col gap-6">
-        <h3 className="text-xl font-semibold text-white/90 text-center mb-2">
-          Export Options ({format.toUpperCase()})
-        </h3>
+        <div className="text-center mb-2">
+          <h3 className="text-xl font-semibold text-white/90">
+            Export Options
+          </h3>
+          <p className="text-sm text-slate-400 mt-1">
+            Copy code for {size === "large" ? "Social Media" : "GitHub README"}
+          </p>
+        </div>
 
         <ExportField
           label="Image URL"
