@@ -1,4 +1,4 @@
-import { CardData } from "@/lib/github/types";
+import { CardData, ProcessedUserData } from "@/lib/github/types";
 import { GlassPanel } from "@/app/components/ui/GlassPanel";
 import { StatBlock } from "./StatBlock";
 import { LanguageBar } from "./LanguageBar";

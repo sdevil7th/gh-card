@@ -25,7 +25,7 @@ export function CardPreview({ data }: { data: ProcessedUserData }) {
         transitionSpeed={1500}
         className="z-10"
       >
-        <CardContent data={data} />
+        <CardContent data={data as ProcessedUserData & { type: "user" }} />
       </Tilt>
     </div>
   );
