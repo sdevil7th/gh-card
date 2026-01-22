@@ -4,8 +4,6 @@ import { fetchGithubData } from "@/lib/github/client";
 import {
   CardData,
   ProcessedUserData,
-  ProcessedRepoData,
-  ProcessedOrgData,
   ContributionWeek,
 } from "@/lib/github/types";
 
@@ -23,7 +21,13 @@ const interBold = fetch(
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const username = searchParams.get("username");
-  const format = searchParams.get("format") || "png";
+  const size = searchParams.get("size") === "small" ? "small" : "large";
+
+  // Dimensions
+  // Large: Standard OG (Twitter/FB/LinkedIn)
+  // Small: Standard GitHub Readme Width (often ~500-800px, we stick to 500 for compactness)
+  const width = size === "small" ? 500 : 1200;
+  const height = size === "small" ? 280 : 630;
 
   if (!username) {
     return new Response("Username is required", { status: 400 });
@@ -51,15 +55,20 @@ export async function GET(request: NextRequest) {
       },
     ];
 
-    // Note: Satori doesn't support SVG native export via ImageResponse directly in the same way,
-    // but ImageResponse returns an image. If 'svg' format is requested strictly as XML,
-    // we would need 'satori' package import.
-    // However, keeping consistent with the previous file structure:
-    return new ImageResponse(<CardTemplate data={data} />, {
-      width: 1200,
-      height: 630,
-      fonts: fonts,
-    });
+    return new ImageResponse(
+      <Wrapper size={size} width={width} height={height}>
+        {size === "small" ? (
+          <SmallCard data={data} />
+        ) : (
+          <LargeCard data={data} />
+        )}
+      </Wrapper>,
+      {
+        width,
+        height,
+        fonts,
+      },
+    );
   } catch (e: any) {
     console.error(e);
     return new Response(`Failed to generate image: ${e.message}`, {
@@ -68,15 +77,19 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// --- Components ---
+// --- Layouts ---
 
-function CardTemplate({ data }: { data: CardData }) {
-  const isRepo = data.type === "repo";
-  const isOrg = data.type === "organization";
-
-  // Background gradient from CardPreview (purple-500/20 blur)
-  // We can't do exact blur, so we simulate with a dark gradient + inner glow
-
+function Wrapper({
+  children,
+  size,
+  width,
+  height,
+}: {
+  children: React.ReactNode;
+  size: "small" | "large";
+  width: number;
+  height: number;
+}) {
   return (
     <div
       style={{
@@ -92,162 +105,295 @@ function CardTemplate({ data }: { data: CardData }) {
         position: "relative",
       }}
     >
-      {/* Background Decor (Simulating the blur blob) */}
+      {/* Background Glow */}
       <div
         style={{
           position: "absolute",
           top: "50%",
           left: "50%",
           transform: "translate(-50%, -50%)",
-          width: "600px",
-          height: "600px",
+          width: size === "small" ? "300px" : "800px",
+          height: size === "small" ? "300px" : "800px",
           backgroundImage:
-            "radial-gradient(circle, rgba(168, 85, 247, 0.4) 0%, rgba(168, 85, 247, 0) 70%)",
+            "radial-gradient(circle, rgba(124, 58, 237, 0.3) 0%, rgba(139, 92, 246, 0) 70%)",
           display: "flex",
         }}
       />
+      {children}
+    </div>
+  );
+}
 
-      {/* Main Card Content */}
+function LargeCard({ data }: { data: CardData }) {
+  const isRepo = data.type === "repo";
+
+  return (
+    <GlassContainer width="1120px" height="570px">
+      {/* Header */}
+      <div style={{ display: "flex", width: "100%", marginBottom: "40px" }}>
+        <HeaderContent data={data} size="large" />
+      </div>
+
+      {/* Stats */}
+      <div
+        style={{
+          display: "flex",
+          width: "100%",
+          gap: "16px",
+          marginBottom: "32px",
+        }}
+      >
+        <StatsRow data={data} size="large" />
+      </div>
+
+      {/* Language Bar */}
+      <LanguageBar languages={data.languages} />
+
+      {/* Contributions (Users Only) */}
+      {!isRepo && "contributions" in data && (
+        <ContributionGraph days={data.contributions.calendar} />
+      )}
+
+      {/* Footer */}
+      <Footer />
+    </GlassContainer>
+  );
+}
+
+function SmallCard({ data }: { data: CardData }) {
+  return (
+    <GlassContainer width="460px" height="240px" padding="24px">
       <div
         style={{
           display: "flex",
           flexDirection: "column",
-          width: "900px",
-          backgroundColor: "rgba(255, 255, 255, 0.1)", // Glass base
-          border: "1px solid rgba(255, 255, 255, 0.2)",
-          borderRadius: "24px",
-          padding: "48px",
-          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
+          width: "100%",
+          height: "100%",
+          justifyContent: "space-between",
         }}
       >
-        {/* Header */}
-        <Header data={data} />
-
-        {/* Stats */}
-        <StatsRow data={data} />
-
-        {/* Language Bar */}
-        <LanguageBar languages={data.languages} />
-
-        {/* Contributions (Users Only) */}
-        {!isRepo && "contributions" in data && (
-          <ContributionGraph days={data.contributions.calendar} />
-        )}
-
-        {/* Footer */}
+        {/* Top Row: Info + Stats */}
         <div
           style={{
-            marginTop: "32px",
-            paddingTop: "16px",
-            borderTop: "1px solid rgba(255, 255, 255, 0.1)",
             display: "flex",
             justifyContent: "space-between",
+            alignItems: "flex-start",
             width: "100%",
-            fontSize: "14px",
-            color: "#94a3b8", // slate-400
           }}
         >
-          <span>Generated by gh-card.dev</span>
-          <span>{new Date().toLocaleDateString()}</span>
+          <HeaderContent data={data} size="small" />
+        </div>
+
+        {/* Middle: Stats */}
+        <div
+          style={{
+            display: "flex",
+            width: "100%",
+            gap: "8px",
+            marginTop: "16px",
+          }}
+        >
+          <StatsRow data={data} size="small" />
+        </div>
+
+        {/* Bottom: Language Bar */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            width: "100%",
+            marginTop: "auto",
+          }}
+        >
+          <LanguageBar
+            languages={data.languages}
+            height="8px"
+            showLegend={false}
+          />
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              marginTop: "12px",
+              fontSize: "10px",
+              color: "#64748b",
+            }}
+          >
+            <span>
+              {data.languages
+                .slice(0, 3)
+                .map((l) => l.name)
+                .join(" • ")}
+            </span>
+            <span>gh-card.dev</span>
+          </div>
         </div>
       </div>
+    </GlassContainer>
+  );
+}
+
+// --- Components ---
+
+function GlassContainer({
+  children,
+  width,
+  height,
+  padding = "48px",
+}: {
+  children: React.ReactNode;
+  width: string;
+  height: string;
+  padding?: string;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        width: width,
+        height: height,
+        //   backgroundColor: "rgba(30, 41, 59, 0.4)", // Darker glass base
+        // Complex Glass Gradients
+        backgroundImage:
+          "linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 50%, rgba(255, 255, 255, 0.02) 100%)",
+
+        // Borders (simulated bevel)
+        borderTop: "1px solid rgba(255, 255, 255, 0.3)",
+        borderLeft: "1px solid rgba(255, 255, 255, 0.2)",
+        borderRight: "1px solid rgba(255, 255, 255, 0.1)",
+        borderBottom: "1px solid rgba(255, 255, 255, 0.05)",
+
+        borderRadius: "24px",
+        padding: padding,
+        boxShadow:
+          "0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.05)",
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      {/* Sheen Effect */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          height: "40%",
+          background:
+            "linear-gradient(to bottom, rgba(255,255,255,0.05) 0%, transparent 100%)",
+          pointerEvents: "none",
+        }}
+      />
+
+      {children}
     </div>
   );
 }
 
-function Header({ data }: { data: CardData }) {
+function HeaderContent({
+  data,
+  size,
+}: {
+  data: CardData;
+  size: "small" | "large";
+}) {
   const isRepo = data.type === "repo";
   const name = isRepo ? data.name : data.name || data.username;
   const subtext = isRepo ? `${data.owner}/${data.name}` : `@${data.username}`;
-  const desc =
-    "description" in data ? data.description : "bio" in data ? data.bio : null;
+
+  const imgSize = size === "small" ? "48" : "96";
+  const nameSize = size === "small" ? "20px" : "36px";
+  const subtextSize = size === "small" ? "12px" : "20px";
 
   return (
-    <div style={{ display: "flex", width: "100%", marginBottom: "32px" }}>
-      <div style={{ display: "flex", alignItems: "flex-start", gap: "24px" }}>
-        {/* Avatar */}
-        <div style={{ display: "flex", position: "relative" }}>
-          {/* Avatar Border Gradient Substitute */}
-          <div
-            style={{
-              position: "absolute",
-              top: "-4px",
-              left: "-4px",
-              right: "-4px",
-              bottom: "-4px",
-              borderRadius: "50%",
-              backgroundImage: "linear-gradient(to right, #6366f1, #a855f7)",
-              opacity: 0.75,
-              display: "flex",
-            }}
-          />
-          <img
-            src={data.avatarUrl}
-            width="96"
-            height="96"
-            style={{
-              borderRadius: "50%",
-              border: "2px solid rgba(255,255,255,0.2)",
-              position: "relative", // Bring above glow
-            }}
-          />
-        </div>
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: size === "small" ? "12px" : "24px",
+      }}
+    >
+      {/* Avatar */}
+      <div style={{ display: "flex", position: "relative" }}>
+        <div
+          style={{
+            position: "absolute",
+            top: "-2px",
+            left: "-2px",
+            right: "-2px",
+            bottom: "-2px",
+            borderRadius: "50%",
+            backgroundImage: "linear-gradient(to right, #6366f1, #a855f7)",
+            opacity: 0.8,
+            display: "flex",
+          }}
+        />
+        <img
+          src={data.avatarUrl}
+          width={imgSize}
+          height={imgSize}
+          style={{
+            borderRadius: "50%",
+            border: "2px solid rgba(255,255,255,0.2)",
+            position: "relative",
+          }}
+        />
+      </div>
 
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          <span
-            style={{
-              fontSize: "36px",
-              fontWeight: 700,
-              color: "white",
-              lineHeight: 1.1,
-            }}
-          >
-            {name}
-          </span>
-          <span
-            style={{ fontSize: "20px", color: "#a5b4fc", marginTop: "4px" }}
-          >
-            {subtext}
-          </span>
-          {desc && (
-            <span
-              style={{
-                fontSize: "16px",
-                color: "#cbd5e1",
-                marginTop: "12px",
-                maxWidth: "600px",
-                lineHeight: 1.5,
-                // lineClamp isn't fully supported in satori the same way, but wrapping works
-                display: "flex",
-              }}
-            >
-              {desc.length > 120 ? desc.substring(0, 120) + "..." : desc}
-            </span>
-          )}
-        </div>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+        }}
+      >
+        <span
+          style={{
+            fontSize: nameSize,
+            fontWeight: 700,
+            color: "white",
+            lineHeight: 1.1,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            maxWidth: size === "small" ? "260px" : "600px",
+          }}
+        >
+          {name}
+        </span>
+        <span
+          style={{ fontSize: subtextSize, color: "#a5b4fc", marginTop: "2px" }}
+        >
+          {subtext}
+        </span>
       </div>
     </div>
   );
 }
 
-function StatsRow({ data }: { data: CardData }) {
+function StatsRow({ data, size }: { data: CardData; size: "small" | "large" }) {
   const isRepo = data.type === "repo";
   const isOrg = data.type === "organization";
 
   let stats: { label: string; value: number; icon: string }[] = [];
 
+  // Logic to choose stats
+  // For small card, we might show fewer stats or smaller icons
   if (isRepo) {
     stats = [
       { label: "Stars", value: data.stars, icon: "⭐" },
       { label: "Forks", value: data.forks, icon: "🍴" },
-      { label: "Watchers", value: data.watchers, icon: "👀" },
     ];
+    if (size === "large")
+      stats.push({ label: "Watchers", value: data.watchers, icon: "👀" });
   } else if (isOrg) {
     stats = [
       { label: "Stars", value: data.totalStars, icon: "⭐" },
       { label: "Repos", value: data.totalRepos, icon: "📦" },
-      { label: "Forks", value: data.totalForks, icon: "🍴" },
     ];
+    if (size === "large")
+      stats.push({ label: "Forks", value: data.totalForks, icon: "🍴" });
   } else {
     // User
     stats = [
@@ -256,28 +402,35 @@ function StatsRow({ data }: { data: CardData }) {
         value: (data as ProcessedUserData).totalStars,
         icon: "⭐",
       },
-      {
+    ];
+    if (size !== "small")
+      stats.push({
         label: "Commits",
         value: (data as ProcessedUserData).totalCommits,
         icon: "🔥",
-      },
-      {
-        label: "Repos",
-        value: (data as ProcessedUserData).totalRepos,
-        icon: "📦",
-      },
-      {
-        label: "Followers",
-        value: (data as ProcessedUserData).followers,
-        icon: "👥",
-      },
-    ];
+      });
+    stats.push({
+      label: "Repos",
+      value: (data as ProcessedUserData).totalRepos,
+      icon: "📦",
+    });
+    stats.push({
+      label: "Followers",
+      value: (data as ProcessedUserData).followers,
+      icon: "👥",
+    });
   }
 
   return (
-    <div style={{ display: "flex", gap: "16px", width: "100%" }}>
+    <div
+      style={{
+        display: "flex",
+        gap: size === "small" ? "8px" : "16px",
+        width: "100%",
+      }}
+    >
       {stats.map((stat) => (
-        <StatBlock key={stat.label} {...stat} />
+        <StatBlock key={stat.label} {...stat} size={size} />
       ))}
     </div>
   );
@@ -287,13 +440,56 @@ function StatBlock({
   label,
   value,
   icon,
+  size,
 }: {
   label: string;
   value: number;
   icon: string;
+  size: "small" | "large";
 }) {
   const formattedValue =
     value >= 1000 ? (value / 1000).toFixed(1) + "k" : value.toString();
+
+  const padding = size === "small" ? "10px 12px" : "20px 16px";
+  const iconSize = size === "small" ? "16px" : "28px";
+  const valSize = size === "small" ? "18px" : "28px";
+  const labelSize = size === "small" ? "10px" : "14px";
+
+  // Compact stat block for small version
+  if (size === "small") {
+    return (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          flex: 1,
+          backgroundColor: "rgba(0, 0, 0, 0.2)",
+          border: "1px solid rgba(255, 255, 255, 0.05)",
+          borderRadius: "12px",
+          padding: "8px",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+          <span style={{ fontSize: iconSize }}>{icon}</span>
+          <span style={{ fontSize: valSize, fontWeight: 700, color: "white" }}>
+            {formattedValue}
+          </span>
+        </div>
+        <span
+          style={{
+            fontSize: labelSize,
+            color: "#94a3b8",
+            textTransform: "uppercase",
+            marginTop: "2px",
+          }}
+        >
+          {label}
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -306,13 +502,13 @@ function StatBlock({
         backgroundColor: "rgba(255, 255, 255, 0.05)",
         border: "1px solid rgba(255, 255, 255, 0.05)",
         borderRadius: "16px",
-        padding: "20px 16px",
+        padding: padding,
       }}
     >
-      <span style={{ fontSize: "28px", marginBottom: "8px" }}>{icon}</span>
+      <span style={{ fontSize: iconSize, marginBottom: "8px" }}>{icon}</span>
       <span
         style={{
-          fontSize: "28px",
+          fontSize: valSize,
           fontWeight: 700,
           color: "white",
         }}
@@ -321,7 +517,7 @@ function StatBlock({
       </span>
       <span
         style={{
-          fontSize: "14px",
+          fontSize: labelSize,
           color: "#94a3b8",
           textTransform: "uppercase",
           letterSpacing: "1px",
@@ -337,12 +533,16 @@ function StatBlock({
 
 function LanguageBar({
   languages,
+  height = "12px",
+  showLegend = true,
 }: {
   languages: Array<{
     name: string;
     color: string;
     percentage: number;
   }>;
+  height?: string;
+  showLegend?: boolean;
 }) {
   if (!languages.length) return null;
 
@@ -352,7 +552,7 @@ function LanguageBar({
         display: "flex",
         flexDirection: "column",
         width: "100%",
-        marginTop: "32px",
+        marginTop: showLegend ? "32px" : "0",
       }}
     >
       {/* Bar */}
@@ -360,7 +560,7 @@ function LanguageBar({
         style={{
           display: "flex",
           width: "100%",
-          height: "12px",
+          height: height,
           borderRadius: "6px",
           overflow: "hidden",
           backgroundColor: "rgba(30, 41, 59, 0.5)", // slate-800/50
@@ -380,45 +580,46 @@ function LanguageBar({
       </div>
 
       {/* Legend */}
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: "16px",
-          marginTop: "12px",
-          justifyContent: "center",
-        }}
-      >
-        {languages.map((lang) => (
-          <div
-            key={lang.name}
-            style={{ display: "flex", alignItems: "center", gap: "8px" }}
-          >
+      {showLegend && (
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "16px",
+            marginTop: "12px",
+            justifyContent: "center",
+          }}
+        >
+          {languages.map((lang) => (
             <div
-              style={{
-                width: "8px",
-                height: "8px",
-                borderRadius: "50%",
-                backgroundColor: lang.color,
-              }}
-            />
-            <span
-              style={{ fontSize: "14px", fontWeight: 500, color: "#cbd5e1" }}
+              key={lang.name}
+              style={{ display: "flex", alignItems: "center", gap: "8px" }}
             >
-              {lang.name}
-            </span>
-            <span style={{ fontSize: "14px", color: "#64748b" }}>
-              {lang.percentage}%
-            </span>
-          </div>
-        ))}
-      </div>
+              <div
+                style={{
+                  width: "8px",
+                  height: "8px",
+                  borderRadius: "50%",
+                  backgroundColor: lang.color,
+                }}
+              />
+              <span
+                style={{ fontSize: "14px", fontWeight: 500, color: "#cbd5e1" }}
+              >
+                {lang.name}
+              </span>
+              <span style={{ fontSize: "14px", color: "#64748b" }}>
+                {lang.percentage}%
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
 function ContributionGraph({ days }: { days: ContributionWeek[] }) {
-  // Only show last 10 weeks same as component
   const weeks = days;
 
   return (
@@ -480,6 +681,26 @@ function ContributionGraph({ days }: { days: ContributionWeek[] }) {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function Footer() {
+  return (
+    <div
+      style={{
+        marginTop: "32px",
+        paddingTop: "16px",
+        borderTop: "1px solid rgba(255, 255, 255, 0.1)",
+        display: "flex",
+        justifyContent: "space-between",
+        width: "100%",
+        fontSize: "14px",
+        color: "#94a3b8", // slate-400
+      }}
+    >
+      <span>Generated by gh-card.dev</span>
+      <span>{new Date().toLocaleDateString()}</span>
     </div>
   );
 }
