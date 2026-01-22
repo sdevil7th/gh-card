@@ -7,31 +7,47 @@ import {
   ContributionWeek,
 } from "@/lib/github/types";
 
-// export const runtime = "edge"; // REMOVED to fix 500 error on Netlify
+// Force Node.js runtime to avoid Edge issues with env vars
+// export const runtime = "edge";
 
-// Load fonts
-const interRegular = fetch(
-  "https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.woff",
-).then((res) => {
-  if (!res.ok)
-    throw new Error(`Failed to load Inter Regular: ${res.statusText}`);
-  return res.arrayBuffer();
-});
+async function loadGoogleFont(font: string, text: string) {
+  const url = `https://fonts.googleapis.com/css2?family=${font}&text=${encodeURIComponent(text)}`;
+  const css = await (await fetch(url)).text();
+  const resource = css.match(
+    /src: url\((.+)\) format\('(opentype|truetype|woff)'\)/,
+  );
 
-const interBold = fetch(
-  "https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-700-normal.woff",
-).then((res) => {
-  if (!res.ok) throw new Error(`Failed to load Inter Bold: ${res.statusText}`);
-  return res.arrayBuffer();
-});
+  if (resource) {
+    const response = await fetch(resource[1]);
+    if (response.status == 200) {
+      return await response.arrayBuffer();
+    }
+  }
 
-const orbitronBold = fetch(
-  "https://cdn.jsdelivr.net/fontsource/fonts/orbitron@latest/latin-700-normal.woff",
-).then((res) => {
-  if (!res.ok)
-    throw new Error(`Failed to load Orbitron Bold: ${res.statusText}`);
-  return res.arrayBuffer();
-});
+  throw new Error("failed to load font data");
+}
+
+// Fixed font loading with error handling
+const loadFonts = async () => {
+  try {
+    const [interRegular, interBold, orbitronBold] = await Promise.all([
+      fetch(
+        "https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.woff",
+      ).then((res) => res.arrayBuffer()),
+      fetch(
+        "https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-700-normal.woff",
+      ).then((res) => res.arrayBuffer()),
+      fetch(
+        "https://cdn.jsdelivr.net/fontsource/fonts/orbitron@latest/latin-700-normal.woff",
+      ).then((res) => res.arrayBuffer()),
+    ]);
+    return { interRegular, interBold, orbitronBold };
+  } catch (e) {
+    console.error("Font loading failure:", e);
+    // Fallback or re-throw
+    throw e;
+  }
+};
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -47,36 +63,30 @@ export async function GET(request: NextRequest) {
   }
 
   if (!process.env.GITHUB_TOKEN) {
-    console.error("GITHUB_TOKEN is missing");
-    return new Response("GITHUB_TOKEN is missing in environment variables", {
-      status: 500,
-    });
+    console.error("GITHUB_TOKEN missing");
+    return new Response("GITHUB_TOKEN is missing", { status: 500 });
   }
 
   try {
     const data = await fetchGithubData(username);
-    const [regularData, boldData, orbitronData] = await Promise.all([
-      interRegular,
-      interBold,
-      orbitronBold,
-    ]);
+    const fontsData = await loadFonts();
 
     const fonts = [
       {
         name: "Inter",
-        data: regularData,
+        data: fontsData.interRegular,
         style: "normal" as const,
         weight: 400 as const,
       },
       {
         name: "Inter",
-        data: boldData,
+        data: fontsData.interBold,
         style: "normal" as const,
         weight: 700 as const,
       },
       {
         name: "Orbitron",
-        data: orbitronData,
+        data: fontsData.orbitronBold,
         style: "normal" as const,
         weight: 700 as const,
       },
@@ -98,7 +108,7 @@ export async function GET(request: NextRequest) {
     );
   } catch (e: any) {
     console.error("OG Generation Error:", e);
-    return new Response(`Failed to generate image: ${e.message}`, {
+    return new Response(`Failed: ${e.message}`, {
       status: 500,
     });
   }
@@ -126,7 +136,7 @@ function Wrapper({
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        background: "#0f172a", // Slate 900 base
+        background: "#0f172a", // Slate 950 to match preview
         color: "white",
         fontFamily: '"Inter"',
         position: "relative",
@@ -141,8 +151,9 @@ function Wrapper({
           transform: "translate(-50%, -50%)",
           width: size === "small" ? "400px" : "1000px",
           height: size === "small" ? "300px" : "700px",
+          // Satori safe radial gradient
           backgroundImage:
-            "radial-gradient(circle, rgba(124, 58, 237, 0.4) 0%, rgba(139, 92, 246, 0) 70%)",
+            "radial-gradient(circle at 50% 50%, rgba(124, 58, 237, 0.4), transparent 70%)",
           display: "flex",
         }}
       />
@@ -306,27 +317,28 @@ function GlassContainer({
         flexDirection: "column",
         width: width,
         height: height,
-        // Complex Glass Gradients
-        backgroundImage:
-          "linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 50%, rgba(255, 255, 255, 0.02) 100%)",
+        // Satori-safe background (No complex linear-gradient angles if failing, but standard angles usually work)
+        // Trying simpler gradient to be safe
+        background:
+          "linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02))",
 
-        // Borders (Bolder/Fancier)
-        // Using explicit border width of 2px for "bolder" feel
+        // Borders - Solid lines are safest
         borderTop: "2px solid rgba(255, 255, 255, 0.4)",
         borderLeft: "2px solid rgba(255, 255, 255, 0.25)",
         borderRight: "2px solid rgba(255, 255, 255, 0.15)",
-        borderBottom: "2px solid rgba(255, 255, 255, 0.05)",
+        borderBottom: "2px solid rgba(255, 255, 255, 0.1)",
 
         borderRadius: "0px",
 
         padding: padding,
         position: "relative",
         overflow: "hidden",
-        // Added stronger inner shadow
-        boxShadow: "inset 0 0 40px rgba(255, 255, 255, 0.05)",
+
+        // REMOVING INSET SHADOW - This often causes 500 in Satori if too complex or unsupported
+        // boxShadow: "inset 0 0 40px rgba(255, 255, 255, 0.05)",
       }}
     >
-      {/* Sheen Effect - Intensified */}
+      {/* Sheen Effect - Simple Overlay */}
       <div
         style={{
           position: "absolute",
@@ -335,11 +347,10 @@ function GlassContainer({
           right: 0,
           height: "45%",
           background:
-            "linear-gradient(to bottom, rgba(255,255,255,0.08) 0%, transparent 100%)",
+            "linear-gradient(180deg, rgba(255,255,255,0.05), transparent)",
           pointerEvents: "none",
         }}
       />
-
       {children}
     </div>
   );
@@ -355,6 +366,8 @@ function HeaderContent({
   const isRepo = data.type === "repo";
   const name = isRepo ? data.name : data.name || data.username;
   const subtext = isRepo ? `${data.owner}/${data.name}` : `@${data.username}`;
+  const desc =
+    "description" in data ? data.description : "bio" in data ? data.bio : null;
 
   const imgSize = size === "small" ? "48" : "96";
   const nameSize = size === "small" ? "20px" : "36px";
@@ -370,19 +383,6 @@ function HeaderContent({
     >
       {/* Avatar */}
       <div style={{ display: "flex", position: "relative" }}>
-        <div
-          style={{
-            position: "absolute",
-            top: "-2px",
-            left: "-2px",
-            right: "-2px",
-            bottom: "-2px",
-            borderRadius: "50%",
-            backgroundImage: "linear-gradient(to right, #6366f1, #a855f7)",
-            opacity: 0.8,
-            display: "flex",
-          }}
-        />
         <img
           src={data.avatarUrl}
           width={imgSize}
@@ -391,6 +391,20 @@ function HeaderContent({
             borderRadius: "50%",
             border: "2px solid rgba(255,255,255,0.2)",
             position: "relative",
+          }}
+        />
+        {/* Simple Ring Overlay */}
+        <div
+          style={{
+            position: "absolute",
+            top: "-2px",
+            left: "-2px",
+            right: "-2px",
+            bottom: "-2px",
+            borderRadius: "50%",
+            border: "2px solid rgba(139, 92, 246, 0.5)", // fallback ring
+            opacity: 0.8,
+            display: "flex",
           }}
         />
       </div>
@@ -412,7 +426,6 @@ function HeaderContent({
             overflow: "hidden",
             textOverflow: "ellipsis",
             maxWidth: size === "small" ? "260px" : "600px",
-            // Use Orbitron for Name
             fontFamily: '"Orbitron"',
             letterSpacing: "0.05em",
           }}
@@ -424,6 +437,26 @@ function HeaderContent({
         >
           {subtext}
         </span>
+        {/* Bio/Desc for Large Card */}
+        {size === "large" && desc && (
+          <span
+            style={{
+              fontSize: "16px",
+              color: "#cbd5e1",
+              marginTop: "12px",
+              lineHeight: "1.5",
+              maxWidth: "600px",
+              display: "-webkit-box",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              // lineClamp only works with -webkit-box and vertical orient in satori sometimes
+              maxHeight: "48px",
+            }}
+          >
+            {desc.substring(0, 100)}
+            {desc.length > 100 ? "..." : ""}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -435,8 +468,6 @@ function StatsRow({ data, size }: { data: CardData; size: "small" | "large" }) {
 
   let stats: { label: string; value: number; icon: string }[] = [];
 
-  // Logic to choose stats
-  // For small card, we might show fewer stats or smaller icons
   if (isRepo) {
     stats = [
       { label: "Stars", value: data.stars, icon: "⭐" },
@@ -509,7 +540,7 @@ function StatBlock({
   value: number;
   icon: string;
   size: "small" | "large";
-  count: number;
+  count: number; // passed to calc width
 }) {
   const formattedValue =
     value >= 1000 ? (value / 1000).toFixed(1) + "k" : value.toString();
@@ -519,47 +550,8 @@ function StatBlock({
   const valSize = size === "small" ? "18px" : "28px";
   const labelSize = size === "small" ? "10px" : "14px";
 
-  // Calculate Width for Equal Columns
-  const widthPercent = `${100 / count}%`;
-
-  // Compact stat block for small version
-  if (size === "small") {
-    return (
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          // Force Equal Width
-          flex: 1,
-          width: widthPercent,
-          backgroundColor: "rgba(0, 0, 0, 0.2)",
-          border: "1px solid rgba(255, 255, 255, 0.05)",
-          borderRadius: "12px",
-          padding: "8px",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-          <span style={{ fontSize: iconSize }}>{icon}</span>
-          <span style={{ fontSize: valSize, fontWeight: 700, color: "white" }}>
-            {formattedValue}
-          </span>
-        </div>
-        <span
-          style={{
-            fontSize: labelSize,
-            color: "#94a3b8",
-            textTransform: "uppercase",
-            marginTop: "2px",
-            // Should headers match font? Maybe just name for now to avoid clash
-          }}
-        >
-          {label}
-        </span>
-      </div>
-    );
-  }
+  // Explicit width calculation for columns
+  const widthStr = `${100 / count}%`;
 
   return (
     <div
@@ -568,9 +560,9 @@ function StatBlock({
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        // Force Equal Width
-        flex: 1,
-        width: widthPercent,
+        // Force Strict Equality
+        width: widthStr,
+        flex: "1 1 0%",
         backgroundColor: "rgba(255, 255, 255, 0.05)",
         border: "1px solid rgba(255, 255, 255, 0.05)",
         borderRadius: "16px",
