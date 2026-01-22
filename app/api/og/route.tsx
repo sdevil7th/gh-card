@@ -24,8 +24,6 @@ export async function GET(request: NextRequest) {
   const size = searchParams.get("size") === "small" ? "small" : "large";
 
   // Dimensions
-  // Large: Standard OG (Twitter/FB/LinkedIn)
-  // Small: Standard GitHub Readme Width (often ~500-800px, we stick to 500 for compactness)
   const width = size === "small" ? 500 : 1200;
   const height = size === "small" ? 280 : 630;
 
@@ -112,10 +110,10 @@ function Wrapper({
           top: "50%",
           left: "50%",
           transform: "translate(-50%, -50%)",
-          width: size === "small" ? "300px" : "800px",
-          height: size === "small" ? "300px" : "800px",
+          width: size === "small" ? "400px" : "1000px",
+          height: size === "small" ? "300px" : "700px",
           backgroundImage:
-            "radial-gradient(circle, rgba(124, 58, 237, 0.3) 0%, rgba(139, 92, 246, 0) 70%)",
+            "radial-gradient(circle, rgba(124, 58, 237, 0.4) 0%, rgba(139, 92, 246, 0) 70%)",
           display: "flex",
         }}
       />
@@ -128,41 +126,67 @@ function LargeCard({ data }: { data: CardData }) {
   const isRepo = data.type === "repo";
 
   return (
-    <GlassContainer width="1120px" height="570px">
-      {/* Header */}
-      <div style={{ display: "flex", width: "100%", marginBottom: "40px" }}>
-        <HeaderContent data={data} size="large" />
-      </div>
-
-      {/* Stats */}
+    <GlassContainer width="100%" height="100%" padding="40px">
       <div
         style={{
           display: "flex",
+          flexDirection: "column",
           width: "100%",
-          gap: "16px",
-          marginBottom: "32px",
+          height: "100%",
         }}
       >
-        <StatsRow data={data} size="large" />
+        {/* Header */}
+        <div
+          style={{
+            display: "flex",
+            width: "100%",
+            marginBottom: "24px",
+            flexShrink: 0,
+          }}
+        >
+          <HeaderContent data={data} size="large" />
+        </div>
+
+        {/* Stats */}
+        <div
+          style={{
+            display: "flex",
+            width: "100%",
+            gap: "16px",
+            marginBottom: "24px",
+            flexShrink: 0,
+          }}
+        >
+          <StatsRow data={data} size="large" />
+        </div>
+
+        {/* Language Bar - Fixed Height */}
+        <div style={{ flexShrink: 0 }}>
+          <LanguageBar languages={data.languages} />
+        </div>
+
+        {/* Contributions (Users Only) - Flex Grow to fill space but check overflow */}
+        {!isRepo && "contributions" in data && (
+          <div style={{ marginTop: "auto", width: "100%" }}>
+            <ContributionGraph days={data.contributions.calendar} />
+          </div>
+        )}
+
+        {/* Spacer if no contributions */}
+        {(isRepo || !("contributions" in data)) && <div style={{ flex: 1 }} />}
+
+        {/* Footer */}
+        <div style={{ flexShrink: 0, marginTop: "24px" }}>
+          <Footer />
+        </div>
       </div>
-
-      {/* Language Bar */}
-      <LanguageBar languages={data.languages} />
-
-      {/* Contributions (Users Only) */}
-      {!isRepo && "contributions" in data && (
-        <ContributionGraph days={data.contributions.calendar} />
-      )}
-
-      {/* Footer */}
-      <Footer />
     </GlassContainer>
   );
 }
 
 function SmallCard({ data }: { data: CardData }) {
   return (
-    <GlassContainer width="460px" height="240px" padding="24px">
+    <GlassContainer width="100%" height="100%" padding="24px">
       <div
         style={{
           display: "flex",
@@ -264,10 +288,9 @@ function GlassContainer({
         borderRight: "1px solid rgba(255, 255, 255, 0.1)",
         borderBottom: "1px solid rgba(255, 255, 255, 0.05)",
 
-        borderRadius: "24px",
+        borderRadius: "0px",
+
         padding: padding,
-        boxShadow:
-          "0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.05)",
         position: "relative",
         overflow: "hidden",
       }}
@@ -552,7 +575,7 @@ function LanguageBar({
         display: "flex",
         flexDirection: "column",
         width: "100%",
-        marginTop: showLegend ? "32px" : "0",
+        marginTop: showLegend ? "24px" : "0",
       }}
     >
       {/* Bar */}
@@ -627,7 +650,7 @@ function ContributionGraph({ days }: { days: ContributionWeek[] }) {
       style={{
         display: "flex",
         flexDirection: "column",
-        marginTop: "32px",
+        marginTop: "24px",
         width: "100%",
       }}
     >
@@ -689,7 +712,6 @@ function Footer() {
   return (
     <div
       style={{
-        marginTop: "32px",
         paddingTop: "16px",
         borderTop: "1px solid rgba(255, 255, 255, 0.1)",
         display: "flex",
