@@ -7,16 +7,31 @@ import {
   ContributionWeek,
 } from "@/lib/github/types";
 
-export const runtime = "edge";
+// export const runtime = "edge"; // REMOVED to fix 500 error on Netlify
 
 // Load fonts
 const interRegular = fetch(
   "https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.woff",
-).then((res) => res.arrayBuffer());
+).then((res) => {
+  if (!res.ok)
+    throw new Error(`Failed to load Inter Regular: ${res.statusText}`);
+  return res.arrayBuffer();
+});
 
 const interBold = fetch(
   "https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-700-normal.woff",
-).then((res) => res.arrayBuffer());
+).then((res) => {
+  if (!res.ok) throw new Error(`Failed to load Inter Bold: ${res.statusText}`);
+  return res.arrayBuffer();
+});
+
+const orbitronBold = fetch(
+  "https://cdn.jsdelivr.net/fontsource/fonts/orbitron@latest/latin-700-normal.woff",
+).then((res) => {
+  if (!res.ok)
+    throw new Error(`Failed to load Orbitron Bold: ${res.statusText}`);
+  return res.arrayBuffer();
+});
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -32,6 +47,7 @@ export async function GET(request: NextRequest) {
   }
 
   if (!process.env.GITHUB_TOKEN) {
+    console.error("GITHUB_TOKEN is missing");
     return new Response("GITHUB_TOKEN is missing in environment variables", {
       status: 500,
     });
@@ -39,9 +55,10 @@ export async function GET(request: NextRequest) {
 
   try {
     const data = await fetchGithubData(username);
-    const [regularData, boldData] = await Promise.all([
+    const [regularData, boldData, orbitronData] = await Promise.all([
       interRegular,
       interBold,
+      orbitronBold,
     ]);
 
     const fonts = [
@@ -54,6 +71,12 @@ export async function GET(request: NextRequest) {
       {
         name: "Inter",
         data: boldData,
+        style: "normal" as const,
+        weight: 700 as const,
+      },
+      {
+        name: "Orbitron",
+        data: orbitronData,
         style: "normal" as const,
         weight: 700 as const,
       },
@@ -255,6 +278,7 @@ function SmallCard({ data }: { data: CardData }) {
                 .map((l) => l.name)
                 .join(" • ")}
             </span>
+            <span>gh-card.dev</span>
           </div>
         </div>
       </div>
@@ -282,34 +306,36 @@ function GlassContainer({
         flexDirection: "column",
         width: width,
         height: height,
-        //   backgroundColor: "rgba(30, 41, 59, 0.4)", // Darker glass base
         // Complex Glass Gradients
         backgroundImage:
           "linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 50%, rgba(255, 255, 255, 0.02) 100%)",
 
-        // Borders (simulated bevel)
-        borderTop: "1px solid rgba(255, 255, 255, 0.3)",
-        borderLeft: "1px solid rgba(255, 255, 255, 0.2)",
-        borderRight: "1px solid rgba(255, 255, 255, 0.1)",
-        borderBottom: "1px solid rgba(255, 255, 255, 0.05)",
+        // Borders (Bolder/Fancier)
+        // Using explicit border width of 2px for "bolder" feel
+        borderTop: "2px solid rgba(255, 255, 255, 0.4)",
+        borderLeft: "2px solid rgba(255, 255, 255, 0.25)",
+        borderRight: "2px solid rgba(255, 255, 255, 0.15)",
+        borderBottom: "2px solid rgba(255, 255, 255, 0.05)",
 
         borderRadius: "0px",
 
         padding: padding,
         position: "relative",
         overflow: "hidden",
+        // Added stronger inner shadow
+        boxShadow: "inset 0 0 40px rgba(255, 255, 255, 0.05)",
       }}
     >
-      {/* Sheen Effect */}
+      {/* Sheen Effect - Intensified */}
       <div
         style={{
           position: "absolute",
           top: 0,
           left: 0,
           right: 0,
-          height: "40%",
+          height: "45%",
           background:
-            "linear-gradient(to bottom, rgba(255,255,255,0.05) 0%, transparent 100%)",
+            "linear-gradient(to bottom, rgba(255,255,255,0.08) 0%, transparent 100%)",
           pointerEvents: "none",
         }}
       />
@@ -386,6 +412,9 @@ function HeaderContent({
             overflow: "hidden",
             textOverflow: "ellipsis",
             maxWidth: size === "small" ? "260px" : "600px",
+            // Use Orbitron for Name
+            fontFamily: '"Orbitron"',
+            letterSpacing: "0.05em",
           }}
         >
           {name}
@@ -458,7 +487,12 @@ function StatsRow({ data, size }: { data: CardData; size: "small" | "large" }) {
       }}
     >
       {stats.map((stat) => (
-        <StatBlock key={stat.label} {...stat} size={size} />
+        <StatBlock
+          key={stat.label}
+          {...stat}
+          size={size}
+          count={stats.length}
+        />
       ))}
     </div>
   );
@@ -469,11 +503,13 @@ function StatBlock({
   value,
   icon,
   size,
+  count,
 }: {
   label: string;
   value: number;
   icon: string;
   size: "small" | "large";
+  count: number;
 }) {
   const formattedValue =
     value >= 1000 ? (value / 1000).toFixed(1) + "k" : value.toString();
@@ -482,6 +518,9 @@ function StatBlock({
   const iconSize = size === "small" ? "16px" : "28px";
   const valSize = size === "small" ? "18px" : "28px";
   const labelSize = size === "small" ? "10px" : "14px";
+
+  // Calculate Width for Equal Columns
+  const widthPercent = `${100 / count}%`;
 
   // Compact stat block for small version
   if (size === "small") {
@@ -492,7 +531,9 @@ function StatBlock({
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
+          // Force Equal Width
           flex: 1,
+          width: widthPercent,
           backgroundColor: "rgba(0, 0, 0, 0.2)",
           border: "1px solid rgba(255, 255, 255, 0.05)",
           borderRadius: "12px",
@@ -511,6 +552,7 @@ function StatBlock({
             color: "#94a3b8",
             textTransform: "uppercase",
             marginTop: "2px",
+            // Should headers match font? Maybe just name for now to avoid clash
           }}
         >
           {label}
@@ -526,7 +568,9 @@ function StatBlock({
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
+        // Force Equal Width
         flex: 1,
+        width: widthPercent,
         backgroundColor: "rgba(255, 255, 255, 0.05)",
         border: "1px solid rgba(255, 255, 255, 0.05)",
         borderRadius: "16px",
@@ -709,6 +753,25 @@ function ContributionGraph({ days }: { days: ContributionWeek[] }) {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function Footer() {
+  return (
+    <div
+      style={{
+        paddingTop: "16px",
+        borderTop: "1px solid rgba(255, 255, 255, 0.1)",
+        display: "flex",
+        justifyContent: "space-between",
+        width: "100%",
+        fontSize: "14px",
+        color: "#94a3b8", // slate-400
+      }}
+    >
+      <span>Generated by gh-card.dev</span>
+      <span>{new Date().toLocaleDateString()}</span>
     </div>
   );
 }
