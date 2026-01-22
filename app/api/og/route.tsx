@@ -1,13 +1,17 @@
 import { ImageResponse } from "@vercel/og";
 import { NextRequest } from "next/server";
 import { fetchGithubData } from "@/lib/github/client";
-import { CardData, ProcessedUserData } from "@/lib/github/types";
-import satori from "satori";
+import {
+  CardData,
+  ProcessedUserData,
+  ProcessedRepoData,
+  ProcessedOrgData,
+  ContributionWeek,
+} from "@/lib/github/types";
 
 export const runtime = "edge";
 
-// Load fonts from Google Fonts repository
-// Load fonts from jsDelivr CDN (reliable)
+// Load fonts
 const interRegular = fetch(
   "https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.woff",
 ).then((res) => res.arrayBuffer());
@@ -47,22 +51,10 @@ export async function GET(request: NextRequest) {
       },
     ];
 
-    if (format === "svg") {
-      const svg = await satori(<CardTemplate data={data} />, {
-        width: 1200,
-        height: 630,
-        fonts: fonts,
-      });
-
-      return new Response(svg, {
-        headers: {
-          "Content-Type": "image/svg+xml",
-          "Cache-Control": "public, max-age=31536000, immutable",
-        },
-      });
-    }
-
-    // Default to PNG via ImageResponse
+    // Note: Satori doesn't support SVG native export via ImageResponse directly in the same way,
+    // but ImageResponse returns an image. If 'svg' format is requested strictly as XML,
+    // we would need 'satori' package import.
+    // However, keeping consistent with the previous file structure:
     return new ImageResponse(<CardTemplate data={data} />, {
       width: 1200,
       height: 630,
@@ -76,10 +68,14 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Optimized Card Template for Satori (Inline Styles)
+// --- Components ---
+
 function CardTemplate({ data }: { data: CardData }) {
   const isRepo = data.type === "repo";
   const isOrg = data.type === "organization";
+
+  // Background gradient from CardPreview (purple-500/20 blur)
+  // We can't do exact blur, so we simulate with a dark gradient + inner glow
 
   return (
     <div
@@ -90,144 +86,212 @@ function CardTemplate({ data }: { data: CardData }) {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        background:
-          "linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)",
-        fontFamily: '"Inter"',
+        background: "#0f172a", // Slate 900 base
         color: "white",
+        fontFamily: '"Inter"',
+        position: "relative",
       }}
     >
-      {/* Background Pattern */}
+      {/* Background Decor (Simulating the blur blob) */}
       <div
         style={{
           position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          width: "600px",
+          height: "600px",
           backgroundImage:
-            "radial-gradient(circle at 25px 25px, rgba(255,255,255,0.05) 2%, transparent 0%)",
-          backgroundSize: "50px 50px",
+            "radial-gradient(circle, rgba(168, 85, 247, 0.4) 0%, rgba(168, 85, 247, 0) 70%)",
+          display: "flex",
         }}
       />
 
-      {/* Glass Card */}
+      {/* Main Card Content */}
       <div
         style={{
           display: "flex",
           flexDirection: "column",
-          padding: "36px",
-          background: "rgba(255, 255, 255, 0.05)",
-          borderRadius: "28px",
-          border: "1px solid rgba(255, 255, 255, 0.1)",
-          boxShadow: "0 8px 32px rgba(0, 0, 0, 0.4)",
           width: "900px",
+          backgroundColor: "rgba(255, 255, 255, 0.1)", // Glass base
+          border: "1px solid rgba(255, 255, 255, 0.2)",
+          borderRadius: "24px",
+          padding: "48px",
+          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
         }}
       >
         {/* Header */}
-        <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
-          <img
-            src={data.avatarUrl}
-            width="100"
-            height="100"
-            style={{
-              borderRadius: "50%",
-              border: "3px solid rgba(255,255,255,0.2)",
-            }}
-          />
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            <span
-              style={{ fontSize: "40px", fontWeight: 700, color: "#f8fafc" }}
-            >
-              {isRepo ? data.name : data.name || data.username}
-            </span>
-            <span style={{ fontSize: "20px", color: "#94a3b8" }}>
-              {isRepo ? `${data.owner}/${data.name}` : `@${data.username}`}
-            </span>
-          </div>
-        </div>
+        <Header data={data} />
 
-        {/* Stats Grid */}
-        <div style={{ display: "flex", gap: "16px", marginTop: "36px" }}>
-          {isRepo ? (
-            <>
-              <StatBox icon="⭐" label="Stars" value={data.stars} />
-              <StatBox icon="🍴" label="Forks" value={data.forks} />
-              <StatBox icon="👀" label="Watchers" value={data.watchers} />
-            </>
-          ) : isOrg ? (
-            <>
-              <StatBox icon="⭐" label="Stars" value={data.totalStars} />
-              <StatBox icon="📦" label="Repos" value={data.totalRepos} />
-              <StatBox icon="🍴" label="Forks" value={data.totalForks} />
-            </>
-          ) : (
-            <>
-              <StatBox icon="⭐" label="Stars" value={data.totalStars} />
-              <StatBox icon="📦" label="Repos" value={data.totalRepos} />
-              <StatBox icon="🔥" label="Commits" value={data.totalCommits} />
-              <StatBox icon="👥" label="Followers" value={data.followers} />
-            </>
-          )}
-        </div>
+        {/* Stats */}
+        <StatsRow data={data} />
 
         {/* Language Bar */}
+        <LanguageBar languages={data.languages} />
+
+        {/* Contributions (Users Only) */}
+        {!isRepo && "contributions" in data && (
+          <ContributionGraph days={data.contributions.calendar} />
+        )}
+
+        {/* Footer */}
         <div
           style={{
-            marginTop: "36px",
+            marginTop: "32px",
+            paddingTop: "16px",
+            borderTop: "1px solid rgba(255, 255, 255, 0.1)",
             display: "flex",
-            height: "16px",
-            borderRadius: "8px",
-            overflow: "hidden",
+            justifyContent: "space-between",
             width: "100%",
+            fontSize: "14px",
+            color: "#94a3b8", // slate-400
           }}
         >
-          {data.languages.map((lang) => (
-            <div
-              key={lang.name}
-              style={{
-                width: `${lang.percentage}%`,
-                backgroundColor: lang.color,
-                height: "100%",
-              }}
-            />
-          ))}
-        </div>
-
-        <div style={{ marginTop: "16px", display: "flex", gap: "16px" }}>
-          {data.languages.map((lang) => (
-            <div
-              key={lang.name}
-              style={{ display: "flex", alignItems: "center", gap: "8px" }}
-            >
-              <div
-                style={{
-                  width: "12px",
-                  height: "12px",
-                  borderRadius: "50%",
-                  backgroundColor: lang.color,
-                }}
-              />
-              <span style={{ fontSize: "16px", color: "#cbd5e1" }}>
-                {lang.name}
-              </span>
-            </div>
-          ))}
+          <span>Generated by gh-card.dev</span>
+          <span>{new Date().toLocaleDateString()}</span>
         </div>
       </div>
     </div>
   );
 }
 
-function StatBox({
-  icon,
+function Header({ data }: { data: CardData }) {
+  const isRepo = data.type === "repo";
+  const name = isRepo ? data.name : data.name || data.username;
+  const subtext = isRepo ? `${data.owner}/${data.name}` : `@${data.username}`;
+  const desc =
+    "description" in data ? data.description : "bio" in data ? data.bio : null;
+
+  return (
+    <div style={{ display: "flex", width: "100%", marginBottom: "32px" }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: "24px" }}>
+        {/* Avatar */}
+        <div style={{ display: "flex", position: "relative" }}>
+          {/* Avatar Border Gradient Substitute */}
+          <div
+            style={{
+              position: "absolute",
+              top: "-4px",
+              left: "-4px",
+              right: "-4px",
+              bottom: "-4px",
+              borderRadius: "50%",
+              backgroundImage: "linear-gradient(to right, #6366f1, #a855f7)",
+              opacity: 0.75,
+              display: "flex",
+            }}
+          />
+          <img
+            src={data.avatarUrl}
+            width="96"
+            height="96"
+            style={{
+              borderRadius: "50%",
+              border: "2px solid rgba(255,255,255,0.2)",
+              position: "relative", // Bring above glow
+            }}
+          />
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <span
+            style={{
+              fontSize: "36px",
+              fontWeight: 700,
+              color: "white",
+              lineHeight: 1.1,
+            }}
+          >
+            {name}
+          </span>
+          <span
+            style={{ fontSize: "20px", color: "#a5b4fc", marginTop: "4px" }}
+          >
+            {subtext}
+          </span>
+          {desc && (
+            <span
+              style={{
+                fontSize: "16px",
+                color: "#cbd5e1",
+                marginTop: "12px",
+                maxWidth: "600px",
+                lineHeight: 1.5,
+                // lineClamp isn't fully supported in satori the same way, but wrapping works
+                display: "flex",
+              }}
+            >
+              {desc.length > 120 ? desc.substring(0, 120) + "..." : desc}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatsRow({ data }: { data: CardData }) {
+  const isRepo = data.type === "repo";
+  const isOrg = data.type === "organization";
+
+  let stats: { label: string; value: number; icon: string }[] = [];
+
+  if (isRepo) {
+    stats = [
+      { label: "Stars", value: data.stars, icon: "⭐" },
+      { label: "Forks", value: data.forks, icon: "🍴" },
+      { label: "Watchers", value: data.watchers, icon: "👀" },
+    ];
+  } else if (isOrg) {
+    stats = [
+      { label: "Stars", value: data.totalStars, icon: "⭐" },
+      { label: "Repos", value: data.totalRepos, icon: "📦" },
+      { label: "Forks", value: data.totalForks, icon: "🍴" },
+    ];
+  } else {
+    // User
+    stats = [
+      {
+        label: "Stars",
+        value: (data as ProcessedUserData).totalStars,
+        icon: "⭐",
+      },
+      {
+        label: "Commits",
+        value: (data as ProcessedUserData).totalCommits,
+        icon: "🔥",
+      },
+      {
+        label: "Repos",
+        value: (data as ProcessedUserData).totalRepos,
+        icon: "📦",
+      },
+      {
+        label: "Followers",
+        value: (data as ProcessedUserData).followers,
+        icon: "👥",
+      },
+    ];
+  }
+
+  return (
+    <div style={{ display: "flex", gap: "16px", width: "100%" }}>
+      {stats.map((stat) => (
+        <StatBlock key={stat.label} {...stat} />
+      ))}
+    </div>
+  );
+}
+
+function StatBlock({
   label,
   value,
+  icon,
 }: {
-  icon: string;
   label: string;
   value: number;
+  icon: string;
 }) {
-  // Simple check for K/M formatting
   const formattedValue =
     value >= 1000 ? (value / 1000).toFixed(1) + "k" : value.toString();
 
@@ -237,34 +301,185 @@ function StatBox({
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        background: "rgba(255, 255, 255, 0.05)",
-        padding: "18px 24px",
-        borderRadius: "20px",
+        justifyContent: "center",
         flex: 1,
-        border: "1px solid rgba(255,255,255,0.05)",
+        backgroundColor: "rgba(255, 255, 255, 0.05)",
+        border: "1px solid rgba(255, 255, 255, 0.05)",
+        borderRadius: "16px",
+        padding: "20px 16px",
       }}
     >
-      <span style={{ fontSize: "26px" }}>{icon}</span>
+      <span style={{ fontSize: "28px", marginBottom: "8px" }}>{icon}</span>
       <span
         style={{
-          fontSize: "36px",
+          fontSize: "28px",
           fontWeight: 700,
-          color: "#f8fafc",
-          marginTop: "8px",
+          color: "white",
         }}
       >
         {formattedValue}
       </span>
       <span
         style={{
-          fontSize: "18px",
+          fontSize: "14px",
           color: "#94a3b8",
           textTransform: "uppercase",
           letterSpacing: "1px",
+          fontWeight: 500,
+          marginTop: "4px",
         }}
       >
         {label}
       </span>
+    </div>
+  );
+}
+
+function LanguageBar({
+  languages,
+}: {
+  languages: Array<{
+    name: string;
+    color: string;
+    percentage: number;
+  }>;
+}) {
+  if (!languages.length) return null;
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        width: "100%",
+        marginTop: "32px",
+      }}
+    >
+      {/* Bar */}
+      <div
+        style={{
+          display: "flex",
+          width: "100%",
+          height: "12px",
+          borderRadius: "6px",
+          overflow: "hidden",
+          backgroundColor: "rgba(30, 41, 59, 0.5)", // slate-800/50
+          border: "1px solid rgba(255, 255, 255, 0.1)",
+        }}
+      >
+        {languages.map((lang, i) => (
+          <div
+            key={lang.name}
+            style={{
+              width: `${lang.percentage}%`,
+              height: "100%",
+              backgroundColor: lang.color,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Legend */}
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "16px",
+          marginTop: "12px",
+          justifyContent: "center",
+        }}
+      >
+        {languages.map((lang) => (
+          <div
+            key={lang.name}
+            style={{ display: "flex", alignItems: "center", gap: "8px" }}
+          >
+            <div
+              style={{
+                width: "8px",
+                height: "8px",
+                borderRadius: "50%",
+                backgroundColor: lang.color,
+              }}
+            />
+            <span
+              style={{ fontSize: "14px", fontWeight: 500, color: "#cbd5e1" }}
+            >
+              {lang.name}
+            </span>
+            <span style={{ fontSize: "14px", color: "#64748b" }}>
+              {lang.percentage}%
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ContributionGraph({ days }: { days: ContributionWeek[] }) {
+  // Only show last 10 weeks same as component
+  const weeks = days;
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        marginTop: "32px",
+        width: "100%",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-end",
+          marginBottom: "12px",
+        }}
+      >
+        <span
+          style={{
+            fontSize: "14px",
+            fontWeight: 600,
+            color: "#94a3b8",
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+          }}
+        >
+          Contributions
+        </span>
+        <span style={{ fontSize: "14px", color: "#64748b" }}>
+          Last 10 Weeks
+        </span>
+      </div>
+
+      <div
+        style={{ display: "flex", justifyContent: "space-between", gap: "6px" }}
+      >
+        {weeks.map((week, i) => (
+          <div
+            key={i}
+            style={{ display: "flex", flexDirection: "column", gap: "5px" }}
+          >
+            {week.contributionDays.map((day) => (
+              <div
+                key={day.date}
+                style={{
+                  width: "12px",
+                  height: "12px",
+                  borderRadius: "2px",
+                  backgroundColor:
+                    day.contributionCount > 0
+                      ? day.color
+                      : "rgba(255, 255, 255, 0.05)",
+                  opacity: day.contributionCount > 0 ? 0.8 : 1,
+                }}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
