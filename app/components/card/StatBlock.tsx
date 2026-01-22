@@ -12,7 +12,7 @@ export function StatBlock({ label, value, icon, delay = 0 }: StatBlockProps) {
   return (
     <GlassPanel
       intensity="low"
-      className="flex flex-col items-center justify-center p-6 flex-1 hover:bg-white/10 transition-colors"
+      className="flex flex-col items-center justify-center p-6 flex-1 w-0 hover:bg-white/10 transition-colors"
     >
       <span className="text-3xl mb-2">{icon}</span>
       <span className="text-2xl font-bold text-white tracking-tight">
