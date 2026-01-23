@@ -4,8 +4,10 @@ import { useState } from "react";
 import { ProfileUrlInput } from "./components/generator/UsernameInput";
 import { CardPreview } from "./components/card/CardPreview";
 import { DownloadActions } from "./components/generator/DownloadActions";
+import { ThemeSelector } from "./components/generator/ThemeSelector";
 import { GradientBlob } from "./components/effects/GradientBlob";
 import { CardData } from "@/lib/github/types";
+import { ThemeId } from "@/lib/themes";
 import { GlassPanel } from "./components/ui/GlassPanel";
 
 const DEMO_USER_URL = "https://github.com/sdevil7th";
@@ -14,6 +16,7 @@ export default function Home() {
   const [data, setData] = useState<CardData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [theme, setTheme] = useState<ThemeId>("neon-purple");
 
   const handleSubmit = async (username: string) => {
     setLoading(true);
@@ -65,13 +68,15 @@ export default function Home() {
 
         {data && (
           <div className="flex flex-col items-center w-full animate-in fade-in zoom-in-95 duration-500">
-            <CardPreview data={data} />
+            <CardPreview data={data} theme={theme} />
             <DownloadActions
               username={
                 data.type === "repo"
                   ? `${data.owner}/${data.name}`
                   : data.username
               }
+              theme={theme}
+              onThemeChange={setTheme}
             />
           </div>
         )}

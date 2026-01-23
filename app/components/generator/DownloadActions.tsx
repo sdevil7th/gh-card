@@ -4,12 +4,20 @@ import { useEffect, useState } from "react";
 import { Button } from "@/app/components/ui/Button";
 import { GlassPanel } from "@/app/components/ui/GlassPanel";
 import { Input } from "@/app/components/ui/Input";
+import { ThemeSelector } from "./ThemeSelector";
+import { ThemeId } from "@/lib/themes";
 
 interface DownloadActionsProps {
   username: string;
+  theme: ThemeId;
+  onThemeChange: (theme: ThemeId) => void;
 }
 
-export function DownloadActions({ username }: DownloadActionsProps) {
+export function DownloadActions({
+  username,
+  theme,
+  onThemeChange,
+}: DownloadActionsProps) {
   const [origin, setOrigin] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
   const [format, setFormat] = useState<"png" | "svg">("png");
@@ -20,7 +28,7 @@ export function DownloadActions({ username }: DownloadActionsProps) {
     setOrigin(window.location.origin);
   }, []);
 
-  const imageUrl = `${origin}/api/og?username=${username}&format=${format}&size=${size}`;
+  const imageUrl = `${origin}/api/og?username=${username}&format=${format}&size=${size}&theme=${theme}`;
   const repoUrl = `https://github.com/${username}`; // Link to profile for now
 
   const formats = {
@@ -61,6 +69,9 @@ export function DownloadActions({ username }: DownloadActionsProps) {
         intensity="low"
         className="flex flex-col gap-4 p-4 rounded-2xl w-full items-center"
       >
+        {/* Theme Selector */}
+        <ThemeSelector selectedTheme={theme} onThemeChange={onThemeChange} />
+
         {/* Size Selector */}
         <div className="flex flex-col items-center gap-2 w-full">
           <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
@@ -77,7 +88,7 @@ export function DownloadActions({ username }: DownloadActionsProps) {
             >
               Social Media{" "}
               <span className="text-xs opacity-60 ml-1 hidden sm:inline">
-                (1200x630)
+                (1600x900)
               </span>
             </button>
             <button

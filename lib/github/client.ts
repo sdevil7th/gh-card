@@ -76,9 +76,7 @@ function processRepoData(data: GithubRepoResponse): ProcessedRepoData {
     .map((edge) => ({
       name: edge.node.name,
       color: edge.node.color,
-      percentage: Math.round(
-        (edge.size / repository.languages.totalSize) * 100,
-      ),
+      percentage: Math.ceil((edge.size / repository.languages.totalSize) * 100),
     }))
     .slice(0, 5);
 
@@ -130,7 +128,7 @@ function processUserData(
       name,
       color,
       size: count,
-      percentage: Math.round((count / totalLanguages) * 100),
+      percentage: Math.ceil((count / totalLanguages) * 100),
     }))
     .sort((a, b) => b.size - a.size)
     .slice(0, 5); // Top 5
@@ -191,7 +189,7 @@ function processOrgData(data: GithubOrgResponse): ProcessedOrgData {
       name,
       color,
       size: count,
-      percentage: Math.round((count / totalLanguages) * 100),
+      percentage: Math.ceil((count / totalLanguages) * 100),
     }))
     .sort((a, b) => b.size - a.size)
     .slice(0, 5);

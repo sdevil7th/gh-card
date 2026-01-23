@@ -3,14 +3,25 @@
 import Tilt from "react-parallax-tilt";
 import { CardContent } from "./CardContent";
 import { CardData } from "@/lib/github/types";
+import { ThemeId, themes } from "@/lib/themes";
 
-export function CardPreview({ data }: { data: CardData }) {
+interface CardPreviewProps {
+  data: CardData;
+  theme: ThemeId;
+}
+
+export function CardPreview({ data, theme }: CardPreviewProps) {
   if (!data) return null;
+
+  const themeConfig = themes[theme];
 
   return (
     <div className="relative flex items-center justify-center p-20">
-      {/* Background Glow for effect */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-500/20 blur-[100px] rounded-full pointer-events-none" />
+      {/* Background Glow for effect - dynamic based on theme */}
+      <div
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] blur-[100px] rounded-full pointer-events-none"
+        style={{ backgroundColor: themeConfig.glow }}
+      />
 
       <Tilt
         tiltMaxAngleX={10}
@@ -25,7 +36,7 @@ export function CardPreview({ data }: { data: CardData }) {
         transitionSpeed={1500}
         className="z-10"
       >
-        <CardContent data={data} />
+        <CardContent data={data} theme={theme} />
       </Tilt>
     </div>
   );

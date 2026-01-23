@@ -6,38 +6,34 @@ import {
   ProcessedUserData,
   ContributionWeek,
 } from "@/lib/github/types";
+import { ThemeId, themes, defaultTheme } from "@/lib/themes";
 
 // Force Node.js runtime to avoid Edge issues with env vars
-// export const runtime = "edge";
-
-async function loadGoogleFont(font: string, text: string) {
-  const url = `https://fonts.googleapis.com/css2?family=${font}&text=${encodeURIComponent(text)}`;
-  const css = await (await fetch(url)).text();
-  const resource = css.match(
-    /src: url\((.+)\) format\('(opentype|truetype|woff)'\)/,
-  );
-
-  if (resource) {
-    const response = await fetch(resource[1]);
-    if (response.status == 200) {
-      return await response.arrayBuffer();
-    }
-  }
-
-  throw new Error("failed to load font data");
-}
+export const runtime = "edge";
 
 // Fixed font loading with error handling
 const loadFonts = async () => {
   try {
+    console.log("Starting font load...");
     const [orbitronRegular, orbitronBold] = await Promise.all([
       fetch(
         "https://cdn.jsdelivr.net/fontsource/fonts/orbitron@latest/latin-400-normal.woff",
-      ).then((res) => res.arrayBuffer()),
+      ).then((res) => {
+        if (!res.ok)
+          throw new Error(`Failed to fetch Regular font: ${res.statusText}`);
+        return res.arrayBuffer();
+      }),
       fetch(
         "https://cdn.jsdelivr.net/fontsource/fonts/orbitron@latest/latin-700-normal.woff",
-      ).then((res) => res.arrayBuffer()),
+      ).then((res) => {
+        if (!res.ok)
+          throw new Error(`Failed to fetch Bold font: ${res.statusText}`);
+        return res.arrayBuffer();
+      }),
     ]);
+    console.log(
+      `Fonts loaded. Regular: ${orbitronRegular.byteLength} bytes, Bold: ${orbitronBold.byteLength} bytes`,
+    );
     return { orbitronRegular, orbitronBold };
   } catch (e) {
     console.error("Font loading failure:", e);
@@ -49,10 +45,17 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const username = searchParams.get("username");
   const size = searchParams.get("size") === "small" ? "small" : "large";
+  const themeParam = searchParams.get("theme") as ThemeId | null;
+  const theme =
+    themeParam && themes[themeParam] ? themes[themeParam] : defaultTheme;
 
-  // Dimensions
-  const width = size === "small" ? 500 : 1200;
-  const height = size === "small" ? 280 : 630;
+  // Dimensions - Small: 500x280, Large: 1600x900 (16:9 for Twitter/LinkedIn)
+  const width = size === "small" ? 500 : 1600;
+  const height = size === "small" ? 280 : 900;
+
+  console.log(
+    `[OG Request] Username: ${username}, Size: ${size}, Theme: ${theme.id}`,
+  );
 
   if (!username) {
     return new Response("Username is required", { status: 400 });
@@ -64,7 +67,10 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    console.log("Fetching GitHub data...");
     const data = await fetchGithubData(username);
+    console.log("GitHub data fetched successfully");
+
     const fontsData = await loadFonts();
 
     const fonts = [
@@ -82,12 +88,13 @@ export async function GET(request: NextRequest) {
       },
     ];
 
+    console.log("Generating ImageResponse...");
     return new ImageResponse(
-      <Wrapper size={size} width={width} height={height}>
+      <Wrapper size={size} width={width} height={height} theme={theme}>
         {size === "small" ? (
-          <SmallCard data={data} />
+          <SmallCard data={data} theme={theme} />
         ) : (
-          <LargeCard data={data} />
+          <LargeCard data={data} theme={theme} />
         )}
       </Wrapper>,
       {
@@ -98,6 +105,9 @@ export async function GET(request: NextRequest) {
     );
   } catch (e: any) {
     console.error("OG Generation Error:", e);
+    // Log stack trace if available
+    if (e.stack) console.error(e.stack);
+
     return new Response(`Failed: ${e.message}`, {
       status: 500,
     });
@@ -106,16 +116,20 @@ export async function GET(request: NextRequest) {
 
 // --- Layouts ---
 
+import { Theme } from "@/lib/themes";
+
 function Wrapper({
   children,
   size,
   width,
   height,
+  theme,
 }: {
   children: React.ReactNode;
   size: "small" | "large";
   width: number;
   height: number;
+  theme: Theme;
 }) {
   return (
     <div
@@ -126,7 +140,7 @@ function Wrapper({
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        background: "#0f172a", // Slate 950 to match preview
+        background: "#0f172a",
         color: "white",
         fontFamily: '"Orbitron"',
         position: "relative",
@@ -141,9 +155,7 @@ function Wrapper({
           transform: "translate(-50%, -50%)",
           width: size === "small" ? "400px" : "1000px",
           height: size === "small" ? "300px" : "700px",
-          // Satori safe radial gradient
-          backgroundImage:
-            "radial-gradient(circle at 50% 50%, rgba(124, 58, 237, 0.4), transparent 70%)",
+          backgroundImage: `radial-gradient(circle at 50% 50%, ${theme.glow}, transparent 70%)`,
           display: "flex",
         }}
       />
@@ -152,13 +164,13 @@ function Wrapper({
   );
 }
 
-function LargeCard({ data }: { data: CardData }) {
+function LargeCard({ data, theme }: { data: CardData; theme: Theme }) {
   const isRepo = data.type === "repo";
   const isOrg = data.type === "organization";
   const hasContributions = !isRepo && !isOrg && "contributions" in data;
 
   return (
-    <GlassContainer width="100%" height="100%" padding="40px">
+    <GlassContainer width="100%" height="100%" padding="40px" theme={theme}>
       <div
         style={{
           display: "flex",
@@ -177,7 +189,7 @@ function LargeCard({ data }: { data: CardData }) {
             flexShrink: 0,
           }}
         >
-          <HeaderContent data={data} size="large" />
+          <HeaderContent data={data} size="large" theme={theme} />
         </div>
 
         {/* Stats */}
@@ -211,9 +223,9 @@ function LargeCard({ data }: { data: CardData }) {
   );
 }
 
-function SmallCard({ data }: { data: CardData }) {
+function SmallCard({ data, theme }: { data: CardData; theme: Theme }) {
   return (
-    <GlassContainer width="100%" height="100%" padding="24px">
+    <GlassContainer width="100%" height="100%" padding="24px" theme={theme}>
       <div
         style={{
           display: "flex",
@@ -232,7 +244,7 @@ function SmallCard({ data }: { data: CardData }) {
             width: "100%",
           }}
         >
-          <HeaderContent data={data} size="small" />
+          <HeaderContent data={data} size="small" theme={theme} />
         </div>
 
         {/* Middle: Stats */}
@@ -290,11 +302,13 @@ function GlassContainer({
   width,
   height,
   padding = "48px",
+  theme,
 }: {
   children: React.ReactNode;
   width: string;
   height: string;
   padding?: string;
+  theme: Theme;
 }) {
   return (
     <div
@@ -303,25 +317,16 @@ function GlassContainer({
         flexDirection: "column",
         width: width,
         height: height,
-        // Dark gradient background with subtle purple tint
-        background:
-          "linear-gradient(145deg, rgba(30, 20, 50, 0.95), rgba(15, 23, 42, 0.98))",
-
-        // Neon purple/indigo borders
-        borderTop: "3px solid rgba(167, 139, 250, 0.8)",
-        borderLeft: "3px solid rgba(139, 92, 246, 0.6)",
-        borderRight: "3px solid rgba(99, 102, 241, 0.4)",
-        borderBottom: "3px solid rgba(79, 70, 229, 0.3)",
-
+        background: `linear-gradient(145deg, ${theme.backgroundTint}, rgba(15, 23, 42, 0.98))`,
+        borderTop: `3px solid ${theme.borderTop}`,
+        borderLeft: `3px solid ${theme.borderLeft}`,
+        borderRight: `3px solid ${theme.borderRight}`,
+        borderBottom: `3px solid ${theme.borderBottom}`,
         borderRadius: "24px",
-
         padding: padding,
         position: "relative",
         overflow: "hidden",
-
-        // Box shadow for glow effect
-        boxShadow:
-          "0 0 60px rgba(139, 92, 246, 0.3), inset 0 0 80px rgba(139, 92, 246, 0.05)",
+        boxShadow: `0 0 60px ${theme.glow}, inset 0 0 80px ${theme.glow.replace("0.3", "0.05")}`,
       }}
     >
       {/* Top glow accent */}
@@ -332,8 +337,7 @@ function GlassContainer({
           left: "10%",
           right: "10%",
           height: "2px",
-          background:
-            "linear-gradient(90deg, transparent, rgba(167, 139, 250, 0.8), transparent)",
+          background: `linear-gradient(90deg, transparent, ${theme.borderTop}, transparent)`,
           display: "flex",
         }}
       />
@@ -345,8 +349,7 @@ function GlassContainer({
           left: 0,
           width: "200px",
           height: "200px",
-          background:
-            "radial-gradient(circle at 0% 0%, rgba(139, 92, 246, 0.15), transparent 50%)",
+          background: `radial-gradient(circle at 0% 0%, ${theme.glow.replace("0.3", "0.15")}, transparent 50%)`,
           display: "flex",
         }}
       />
@@ -358,9 +361,11 @@ function GlassContainer({
 function HeaderContent({
   data,
   size,
+  theme,
 }: {
   data: CardData;
   size: "small" | "large";
+  theme: Theme;
 }) {
   const isRepo = data.type === "repo";
   const name = isRepo ? data.name : data.name || data.username;
@@ -401,7 +406,7 @@ function HeaderContent({
             right: "-2px",
             bottom: "-2px",
             borderRadius: "50%",
-            border: "2px solid rgba(139, 92, 246, 0.5)", // fallback ring
+            border: `2px solid ${theme.borderLeft}`, // fallback ring
             opacity: 0.8,
             display: "flex",
           }}
@@ -432,7 +437,11 @@ function HeaderContent({
           {name}
         </span>
         <span
-          style={{ fontSize: subtextSize, color: "#a5b4fc", marginTop: "2px" }}
+          style={{
+            fontSize: subtextSize,
+            color: theme.accent,
+            marginTop: "2px",
+          }}
         >
           {subtext}
         </span>

@@ -1,23 +1,39 @@
-import { CardData, ProcessedUserData } from "@/lib/github/types";
+import { CardData } from "@/lib/github/types";
 import { GlassPanel } from "@/app/components/ui/GlassPanel";
 import { StatBlock } from "./StatBlock";
 import { LanguageBar } from "./LanguageBar";
 import { ContributionGraph } from "./ContributionGraph";
+import { ThemeId, themes } from "@/lib/themes";
 
-export function CardContent({ data }: { data: CardData }) {
+interface CardContentProps {
+  data: CardData;
+  theme: ThemeId;
+}
+
+export function CardContent({ data, theme }: CardContentProps) {
   const isRepo = data.type === "repo";
   const isOrg = data.type === "organization";
+  const themeConfig = themes[theme];
 
   return (
     <GlassPanel
       intensity="high"
       className="relative overflow-hidden p-6 w-[550px]"
+      style={{
+        borderColor: themeConfig.borderTop,
+        boxShadow: `0 0 40px ${themeConfig.glow}`,
+      }}
     >
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-6">
           <div className="relative">
-            <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 blur opacity-75"></div>
+            <div
+              className="absolute -inset-1 rounded-full blur opacity-75"
+              style={{
+                background: `linear-gradient(to right, ${themeConfig.primary}, ${themeConfig.accent})`,
+              }}
+            />
             <img
               src={data.avatarUrl}
               alt={data.name}
@@ -29,7 +45,7 @@ export function CardContent({ data }: { data: CardData }) {
             <h1 className="text-3xl font-bold text-white">
               {isRepo ? data.name : data.name || data.username}
             </h1>
-            <p className="text-lg text-indigo-300">
+            <p style={{ color: themeConfig.accent }}>
               {isRepo ? `${data.owner}/${data.name}` : `@${data.username}`}
             </p>
             {"description" in data && data.description && (
