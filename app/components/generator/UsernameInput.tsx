@@ -68,7 +68,7 @@ export function ProfileUrlInput({
       onSubmit={handleSubmit}
       className="flex flex-col w-full max-w-md mx-auto relative z-10 gap-2"
     >
-      <div className="flex flex-col sm:flex-row gap-4">
+      <div className="flex flex-col sm:flex-row gap-4 items-center">
         <Input
           placeholder="https://github.com/username"
           value={value}

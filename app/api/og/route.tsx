@@ -30,21 +30,17 @@ async function loadGoogleFont(font: string, text: string) {
 // Fixed font loading with error handling
 const loadFonts = async () => {
   try {
-    const [interRegular, interBold, orbitronBold] = await Promise.all([
+    const [orbitronRegular, orbitronBold] = await Promise.all([
       fetch(
-        "https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.woff",
-      ).then((res) => res.arrayBuffer()),
-      fetch(
-        "https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-700-normal.woff",
+        "https://cdn.jsdelivr.net/fontsource/fonts/orbitron@latest/latin-400-normal.woff",
       ).then((res) => res.arrayBuffer()),
       fetch(
         "https://cdn.jsdelivr.net/fontsource/fonts/orbitron@latest/latin-700-normal.woff",
       ).then((res) => res.arrayBuffer()),
     ]);
-    return { interRegular, interBold, orbitronBold };
+    return { orbitronRegular, orbitronBold };
   } catch (e) {
     console.error("Font loading failure:", e);
-    // Fallback or re-throw
     throw e;
   }
 };
@@ -73,16 +69,10 @@ export async function GET(request: NextRequest) {
 
     const fonts = [
       {
-        name: "Inter",
-        data: fontsData.interRegular,
+        name: "Orbitron",
+        data: fontsData.orbitronRegular,
         style: "normal" as const,
         weight: 400 as const,
-      },
-      {
-        name: "Inter",
-        data: fontsData.interBold,
-        style: "normal" as const,
-        weight: 700 as const,
       },
       {
         name: "Orbitron",
@@ -138,7 +128,7 @@ function Wrapper({
         justifyContent: "center",
         background: "#0f172a", // Slate 950 to match preview
         color: "white",
-        fontFamily: '"Inter"',
+        fontFamily: '"Orbitron"',
         position: "relative",
       }}
     >
@@ -164,6 +154,8 @@ function Wrapper({
 
 function LargeCard({ data }: { data: CardData }) {
   const isRepo = data.type === "repo";
+  const isOrg = data.type === "organization";
+  const hasContributions = !isRepo && !isOrg && "contributions" in data;
 
   return (
     <GlassContainer width="100%" height="100%" padding="40px">
@@ -173,6 +165,7 @@ function LargeCard({ data }: { data: CardData }) {
           flexDirection: "column",
           width: "100%",
           height: "100%",
+          justifyContent: hasContributions ? "flex-start" : "center",
         }}
       >
         {/* Header */}
@@ -180,7 +173,7 @@ function LargeCard({ data }: { data: CardData }) {
           style={{
             display: "flex",
             width: "100%",
-            marginBottom: "24px",
+            marginBottom: data.type === "repo" ? "96px" : "24px",
             flexShrink: 0,
           }}
         >
@@ -201,24 +194,18 @@ function LargeCard({ data }: { data: CardData }) {
         </div>
 
         {/* Language Bar - Fixed Height */}
-        <div style={{ flexShrink: 0 }}>
+        <div style={{ flexShrink: 0, display: "flex" }}>
           <LanguageBar languages={data.languages} />
         </div>
 
-        {/* Contributions (Users Only) - Flex Grow to fill space but check overflow */}
-        {!isRepo && "contributions" in data && (
-          <div style={{ marginTop: "auto", width: "100%" }}>
-            <ContributionGraph days={data.contributions.calendar} />
+        {/* Contributions (Users Only) */}
+        {hasContributions && (
+          <div style={{ marginTop: "auto", width: "100%", display: "flex" }}>
+            <ContributionGraph
+              days={(data as ProcessedUserData).contributions.calendar}
+            />
           </div>
         )}
-
-        {/* Spacer if no contributions */}
-        {(isRepo || !("contributions" in data)) && <div style={{ flex: 1 }} />}
-
-        {/* Footer */}
-        <div style={{ flexShrink: 0, marginTop: "24px" }}>
-          <Footer />
-        </div>
       </div>
     </GlassContainer>
   );
@@ -254,7 +241,7 @@ function SmallCard({ data }: { data: CardData }) {
             display: "flex",
             width: "100%",
             gap: "8px",
-            marginTop: "16px",
+            marginTop: data.type === "repo" ? "32px" : "16px",
           }}
         >
           <StatsRow data={data} size="small" />
@@ -277,7 +264,7 @@ function SmallCard({ data }: { data: CardData }) {
           <div
             style={{
               display: "flex",
-              justifyContent: "space-between",
+              justifyContent: "space-around",
               marginTop: "12px",
               fontSize: "10px",
               color: "#64748b",
@@ -289,7 +276,6 @@ function SmallCard({ data }: { data: CardData }) {
                 .map((l) => l.name)
                 .join(" • ")}
             </span>
-            <span>gh-card.dev</span>
           </div>
         </div>
       </div>
@@ -317,38 +303,51 @@ function GlassContainer({
         flexDirection: "column",
         width: width,
         height: height,
-        // Satori-safe background (No complex linear-gradient angles if failing, but standard angles usually work)
-        // Trying simpler gradient to be safe
+        // Dark gradient background with subtle purple tint
         background:
-          "linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02))",
+          "linear-gradient(145deg, rgba(30, 20, 50, 0.95), rgba(15, 23, 42, 0.98))",
 
-        // Borders - Solid lines are safest
-        borderTop: "2px solid rgba(255, 255, 255, 0.4)",
-        borderLeft: "2px solid rgba(255, 255, 255, 0.25)",
-        borderRight: "2px solid rgba(255, 255, 255, 0.15)",
-        borderBottom: "2px solid rgba(255, 255, 255, 0.1)",
+        // Neon purple/indigo borders
+        borderTop: "3px solid rgba(167, 139, 250, 0.8)",
+        borderLeft: "3px solid rgba(139, 92, 246, 0.6)",
+        borderRight: "3px solid rgba(99, 102, 241, 0.4)",
+        borderBottom: "3px solid rgba(79, 70, 229, 0.3)",
 
-        borderRadius: "0px",
+        borderRadius: "24px",
 
         padding: padding,
         position: "relative",
         overflow: "hidden",
 
-        // REMOVING INSET SHADOW - This often causes 500 in Satori if too complex or unsupported
-        // boxShadow: "inset 0 0 40px rgba(255, 255, 255, 0.05)",
+        // Box shadow for glow effect
+        boxShadow:
+          "0 0 60px rgba(139, 92, 246, 0.3), inset 0 0 80px rgba(139, 92, 246, 0.05)",
       }}
     >
-      {/* Sheen Effect - Simple Overlay */}
+      {/* Top glow accent */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: "10%",
+          right: "10%",
+          height: "2px",
+          background:
+            "linear-gradient(90deg, transparent, rgba(167, 139, 250, 0.8), transparent)",
+          display: "flex",
+        }}
+      />
+      {/* Corner accent glow */}
       <div
         style={{
           position: "absolute",
           top: 0,
           left: 0,
-          right: 0,
-          height: "45%",
+          width: "200px",
+          height: "200px",
           background:
-            "linear-gradient(180deg, rgba(255,255,255,0.05), transparent)",
-          pointerEvents: "none",
+            "radial-gradient(circle at 0% 0%, rgba(139, 92, 246, 0.15), transparent 50%)",
+          display: "flex",
         }}
       />
       {children}
@@ -472,9 +471,8 @@ function StatsRow({ data, size }: { data: CardData; size: "small" | "large" }) {
     stats = [
       { label: "Stars", value: data.stars, icon: "⭐" },
       { label: "Forks", value: data.forks, icon: "🍴" },
+      { label: "Watchers", value: data.watchers, icon: "👀" },
     ];
-    if (size === "large")
-      stats.push({ label: "Watchers", value: data.watchers, icon: "👀" });
   } else if (isOrg) {
     stats = [
       { label: "Stars", value: data.totalStars, icon: "⭐" },
@@ -745,25 +743,6 @@ function ContributionGraph({ days }: { days: ContributionWeek[] }) {
           </div>
         ))}
       </div>
-    </div>
-  );
-}
-
-function Footer() {
-  return (
-    <div
-      style={{
-        paddingTop: "16px",
-        borderTop: "1px solid rgba(255, 255, 255, 0.1)",
-        display: "flex",
-        justifyContent: "space-between",
-        width: "100%",
-        fontSize: "14px",
-        color: "#94a3b8", // slate-400
-      }}
-    >
-      <span>Generated by gh-card.dev</span>
-      <span>{new Date().toLocaleDateString()}</span>
     </div>
   );
 }

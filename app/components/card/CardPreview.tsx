@@ -2,9 +2,9 @@
 
 import Tilt from "react-parallax-tilt";
 import { CardContent } from "./CardContent";
-import { ProcessedUserData } from "@/lib/github/types";
+import { CardData } from "@/lib/github/types";
 
-export function CardPreview({ data }: { data: ProcessedUserData }) {
+export function CardPreview({ data }: { data: CardData }) {
   if (!data) return null;
 
   return (
@@ -25,7 +25,7 @@ export function CardPreview({ data }: { data: ProcessedUserData }) {
         transitionSpeed={1500}
         className="z-10"
       >
-        <CardContent data={data as ProcessedUserData & { type: "user" }} />
+        <CardContent data={data} />
       </Tilt>
     </div>
   );
