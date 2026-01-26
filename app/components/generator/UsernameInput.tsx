@@ -4,19 +4,24 @@ import { useState } from "react";
 import { Input } from "@/app/components/ui/Input";
 import { Button } from "@/app/components/ui/Button";
 
+import { ThemeId, themes } from "@/lib/themes";
+
 interface ProfileUrlInputProps {
   onSubmit: (username: string) => void;
   isLoading: boolean;
   defaultValue?: string;
+  theme: ThemeId;
 }
 
 export function ProfileUrlInput({
   onSubmit,
   isLoading,
   defaultValue = "",
+  theme, // receive global theme
 }: ProfileUrlInputProps) {
   const [value, setValue] = useState(defaultValue);
   const [error, setError] = useState<string | null>(null);
+  const selectedTheme = themes[theme];
 
   const extractGithubPath = (url: string): string | null => {
     // Handle raw input (username or owner/repo)
@@ -72,11 +77,16 @@ export function ProfileUrlInput({
         <Input
           placeholder="https://github.com/username"
           value={value}
+          theme={selectedTheme}
           onChange={(e) => {
             setValue(e.target.value);
             if (error) setError(null);
           }}
           className={`bg-white/5 border-white/10 text-lg py-6 backdrop-blur-md focus:ring-indigo-500/50 ${error ? "border-red-500/50 focus:ring-red-500/50" : ""}`}
+          style={
+            // Override ring color with theme
+            { ["--focus-color" as any]: selectedTheme.primary }
+          }
           autoFocus
         />
         <Button
@@ -84,6 +94,7 @@ export function ProfileUrlInput({
           disabled={isLoading || !value}
           size="lg"
           variant="primary"
+          theme={selectedTheme}
           className="min-w-[120px]"
         >
           {isLoading ? (

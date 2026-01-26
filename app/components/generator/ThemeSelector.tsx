@@ -1,6 +1,7 @@
 "use client";
 
 import { ThemeId, themeList } from "@/lib/themes";
+import { Button } from "@/app/components/ui/Button";
 
 interface ThemeSelectorProps {
   selectedTheme: ThemeId;
@@ -18,13 +19,14 @@ export function ThemeSelector({
       </span>
       <div className="flex flex-wrap justify-center gap-2 max-w-md">
         {themeList.map((theme) => (
-          <button
+          <Button
             key={theme.id}
             onClick={() => onThemeChange(theme.id)}
-            className={`relative w-8 h-8 rounded-full transition-all duration-200 ${
+            variant="ghost"
+            className={`w-8 h-8 p-0 rounded-full transition-all duration-200 ring-2 ${
               selectedTheme === theme.id
-                ? "ring-2 ring-offset-2 ring-offset-slate-950 ring-white scale-110"
-                : "hover:scale-105 opacity-70 hover:opacity-100"
+                ? "ring-offset-2 ring-offset-slate-950 ring-white scale-110"
+                : "ring-transparent opacity-70 hover:opacity-100 hover:scale-105"
             }`}
             style={{
               background: `linear-gradient(135deg, ${theme.primary}, ${theme.accent})`,

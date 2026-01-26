@@ -1,8 +1,44 @@
 import type { Metadata } from "next";
-import { Orbitron } from "next/font/google";
+import {
+  Orbitron,
+  Inter,
+  Roboto,
+  GFS_Didot,
+  EB_Garamond,
+} from "next/font/google";
 import "./globals.css";
 
-const orbitron = Orbitron({ subsets: ["latin"] });
+const orbitron = Orbitron({
+  subsets: ["latin"],
+  variable: "--font-orbitron",
+  display: "swap",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const roboto = Roboto({
+  weight: ["400", "500", "700"],
+  subsets: ["latin"],
+  variable: "--font-roboto",
+  display: "swap",
+});
+
+const didot = GFS_Didot({
+  weight: "400",
+  subsets: ["greek"],
+  variable: "--font-didot",
+  display: "swap",
+});
+
+const garamond = EB_Garamond({
+  subsets: ["latin"],
+  variable: "--font-garamond",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: {
@@ -82,7 +118,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${orbitron.className} bg-slate-950 text-slate-100 antialiased`}
+        className={`${orbitron.variable} ${inter.variable} ${roboto.variable} ${didot.variable} ${garamond.variable} font-sans bg-slate-950 text-slate-100 antialiased`}
       >
         {children}
       </body>

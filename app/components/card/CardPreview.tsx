@@ -5,15 +5,20 @@ import { CardContent } from "./CardContent";
 import { CardData } from "@/lib/github/types";
 import { ThemeId, themes } from "@/lib/themes";
 
+import { FontId, fonts } from "../generator/FontSelector";
+
 interface CardPreviewProps {
   data: CardData;
   theme: ThemeId;
+  size: "small" | "large";
+  font: FontId;
 }
 
-export function CardPreview({ data, theme }: CardPreviewProps) {
+export function CardPreview({ data, theme, size, font }: CardPreviewProps) {
   if (!data) return null;
 
   const themeConfig = themes[theme];
+  const fontConfig = fonts.find((f) => f.id === font);
 
   return (
     <div className="relative flex items-center justify-center p-20">
@@ -35,8 +40,13 @@ export function CardPreview({ data, theme }: CardPreviewProps) {
         scale={1.02}
         transitionSpeed={1500}
         className="z-10"
+        style={{
+          width: size === "small" ? "480px" : "800px", // Scaled down for preview (1280 -> 800)
+          aspectRatio: size === "small" ? "480/270" : "1280/720",
+          fontFamily: fontConfig?.family,
+        }}
       >
-        <CardContent data={data} theme={theme} />
+        <CardContent data={data} theme={theme} size={size} />
       </Tilt>
     </div>
   );

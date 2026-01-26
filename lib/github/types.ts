@@ -1,6 +1,9 @@
 export interface Language {
   name: string;
   color: string;
+  percentage: number; // For visualization (0-100 float)
+  textPercentage: number; // For display (integer)
+  size?: number;
 }
 
 export interface RepositoryNode {
@@ -76,6 +79,7 @@ export interface ProcessedUserData {
     name: string;
     color: string;
     percentage: number;
+    textPercentage: number;
     size: number; // calculated score
   }>;
 
@@ -139,6 +143,7 @@ export interface ProcessedRepoData {
     name: string;
     color: string;
     percentage: number;
+    textPercentage: number;
   }>;
 }
 
@@ -178,6 +183,7 @@ export interface ProcessedOrgData {
     name: string;
     color: string;
     percentage: number;
+    textPercentage: number;
     size: number;
   }>;
 }

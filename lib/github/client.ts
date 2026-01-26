@@ -13,6 +13,7 @@ import {
   ProcessedRepoData,
   ProcessedUserData,
 } from "./types";
+import { normalizePercentages } from "../utils/normalization";
 
 const GITHUB_ENDPOINT = "https://api.github.com/graphql";
 
@@ -73,12 +74,25 @@ function processRepoData(data: GithubRepoResponse): ProcessedRepoData {
   const { repository } = data;
 
   const languages = repository.languages.edges
-    .map((edge) => ({
-      name: edge.node.name,
-      color: edge.node.color,
-      percentage: Math.ceil((edge.size / repository.languages.totalSize) * 100),
-    }))
+    .map((edge) => {
+      const percentage = (edge.size / repository.languages.totalSize) * 100;
+      return {
+        name: edge.node.name,
+        color: edge.node.color,
+        percentage: percentage, // Keep precise float for visualization width
+      };
+    })
     .slice(0, 5);
+
+  // Normalize for text display (integers summing to 100)
+  const normalizedValues = normalizePercentages(
+    languages.map((l) => ({ percentage: l.percentage })),
+  );
+
+  const finalLanguages = languages.map((lang, index) => ({
+    ...lang,
+    textPercentage: normalizedValues[index],
+  }));
 
   return {
     type: "repo",
@@ -93,7 +107,7 @@ function processRepoData(data: GithubRepoResponse): ProcessedRepoData {
     watchers: repository.watchers.totalCount,
     commits: repository.defaultBranchRef?.target?.history?.totalCount || 0,
 
-    languages,
+    languages: finalLanguages,
   };
 }
 
@@ -124,14 +138,27 @@ function processUserData(
   );
 
   const languages = Array.from(languageMap.entries())
-    .map(([name, { count, color }]) => ({
-      name,
-      color,
-      size: count,
-      percentage: Math.ceil((count / totalLanguages) * 100),
-    }))
+    .map(([name, { count, color }]) => {
+      const percentage = (count / totalLanguages) * 100;
+      return {
+        name,
+        color,
+        size: count,
+        percentage: percentage,
+      };
+    })
     .sort((a, b) => b.size - a.size)
     .slice(0, 5); // Top 5
+
+  // Normalize
+  const normalizedValues = normalizePercentages(
+    languages.map((l) => ({ percentage: l.percentage })),
+  );
+
+  const finalLanguages = languages.map((lang, index) => ({
+    ...lang,
+    textPercentage: normalizedValues[index],
+  }));
 
   return {
     name: user.name || user.login,
@@ -149,7 +176,7 @@ function processUserData(
     followers: user.followers.totalCount,
     following: user.following.totalCount,
 
-    languages,
+    languages: finalLanguages,
 
     contributions: {
       total:
@@ -185,14 +212,27 @@ function processOrgData(data: GithubOrgResponse): ProcessedOrgData {
   );
 
   const languages = Array.from(languageMap.entries())
-    .map(([name, { count, color }]) => ({
-      name,
-      color,
-      size: count,
-      percentage: Math.ceil((count / totalLanguages) * 100),
-    }))
+    .map(([name, { count, color }]) => {
+      const percentage = (count / totalLanguages) * 100;
+      return {
+        name,
+        color,
+        size: count,
+        percentage: percentage,
+      };
+    })
     .sort((a, b) => b.size - a.size)
     .slice(0, 5);
+
+  // Normalize
+  const normalizedValues = normalizePercentages(
+    languages.map((l) => ({ percentage: l.percentage })),
+  );
+
+  const finalLanguages = languages.map((lang, index) => ({
+    ...lang,
+    textPercentage: normalizedValues[index],
+  }));
 
   return {
     type: "organization",
@@ -208,6 +248,6 @@ function processOrgData(data: GithubOrgResponse): ProcessedOrgData {
     totalForks,
     totalRepos: organization.repositories.totalCount,
 
-    languages,
+    languages: finalLanguages,
   };
 }

@@ -1,14 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ProfileUrlInput } from "./components/generator/UsernameInput";
 import { CardPreview } from "./components/card/CardPreview";
 import { DownloadActions } from "./components/generator/DownloadActions";
 import { ThemeSelector } from "./components/generator/ThemeSelector";
 import { GradientBlob } from "./components/effects/GradientBlob";
 import { CardData } from "@/lib/github/types";
-import { ThemeId } from "@/lib/themes";
+import { ThemeId, themes } from "@/lib/themes";
 import { GlassPanel } from "./components/ui/GlassPanel";
+import { FontId } from "./components/generator/FontSelector";
+
+import { SmoothScroll } from "./components/effects/SmoothScroll";
 
 const DEMO_USER_URL = "https://github.com/sdevil7th";
 
@@ -17,6 +20,8 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [theme, setTheme] = useState<ThemeId>("neon-purple");
+  const [size, setSize] = useState<"small" | "large">("large");
+  const [font, setFont] = useState<FontId>("orbitron");
 
   const handleSubmit = async (username: string) => {
     setLoading(true);
@@ -39,8 +44,47 @@ export default function Home() {
     }
   };
 
+  const fontMap: Record<FontId, string> = {
+    inter: "var(--font-inter)",
+    roboto: "var(--font-roboto)",
+    orbitron: "var(--font-orbitron)",
+    didot: "var(--font-didot)",
+    garamond: "var(--font-garamond)",
+  };
+
+  const currentFontFamily = fontMap[font];
+  const selectedTheme = themes[theme];
+
+  // Apply theme-specific CSS variables
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty("--scrollbar-color", selectedTheme.primary);
+    root.style.setProperty("--scrollbar-glow", selectedTheme.glow);
+    root.style.setProperty("--selection-color", selectedTheme.primary);
+
+    // Apply global font
+    root.style.setProperty("--font-sans", currentFontFamily);
+  }, [selectedTheme, currentFontFamily]);
+
   return (
-    <main className="min-h-screen relative flex flex-col items-center p-6 md:p-24 overflow-hidden bg-slate-950 text-slate-100 selection:bg-indigo-500/30">
+    <main
+      className="min-h-screen relative flex flex-col items-center p-6 md:p-24 overflow-hidden bg-slate-950 text-slate-100 transition-all duration-500"
+      style={{
+        // Global selection color
+        ["--selection-color" as any]: selectedTheme.primary,
+      }}
+    >
+      <SmoothScroll />
+      <style jsx global>{`
+        :root {
+          --scrollbar-color: ${selectedTheme.primary};
+          --scrollbar-glow: ${selectedTheme.glow};
+        }
+        ::selection {
+          background-color: ${selectedTheme.primary}4D;
+          color: white;
+        }
+      `}</style>
       <GradientBlob />
 
       <div className="z-10 flex flex-col items-center w-full max-w-5xl space-y-12">
@@ -58,6 +102,7 @@ export default function Home() {
           onSubmit={handleSubmit}
           isLoading={loading}
           defaultValue={DEMO_USER_URL}
+          theme={theme}
         />
 
         {error && (
@@ -68,7 +113,7 @@ export default function Home() {
 
         {data && (
           <div className="flex flex-col items-center w-full animate-in fade-in zoom-in-95 duration-500">
-            <CardPreview data={data} theme={theme} />
+            <CardPreview data={data} theme={theme} size={size} font={font} />
             <DownloadActions
               username={
                 data.type === "repo"
@@ -77,6 +122,10 @@ export default function Home() {
               }
               theme={theme}
               onThemeChange={setTheme}
+              size={size}
+              onSizeChange={setSize}
+              font={font}
+              onFontChange={setFont}
             />
           </div>
         )}
