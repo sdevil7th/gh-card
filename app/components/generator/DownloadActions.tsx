@@ -36,8 +36,25 @@ export function DownloadActions({
     setOrigin(window.location.origin);
   }, []);
 
-  const imageUrl = `${origin}/github-card.png?username=${username}&format=${format}&size=${size}&theme=${theme}&font=${font}`;
-  const repoUrl = `https://github.com/${username}`; // Link to profile for now
+  // Determine if input is a repo or user and construct the clean URL
+  const isRepo = username.includes("/");
+  let cleanPath = "";
+
+  if (isRepo) {
+    cleanPath = `/${username}/github-card.${format}`;
+  } else {
+    cleanPath = `/${username}/github-profile-card.${format}`;
+  }
+
+  // Build query params conditionally to omit defaults
+  const queryParams = new URLSearchParams();
+  if (size !== "large") queryParams.append("size", size);
+  if (theme !== "neon-purple") queryParams.append("theme", theme);
+  if (font !== "orbitron") queryParams.append("font", font);
+
+  const queryString = queryParams.toString();
+  const imageUrl = `${origin}${cleanPath}${queryString ? `?${queryString}` : ""}`;
+  const repoUrl = `https://github.com/${username}`;
 
   const formats = {
     imageUrl: imageUrl,

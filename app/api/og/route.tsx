@@ -71,7 +71,7 @@ const loadFonts = async (fontId: string) => {
 };
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
+  const { searchParams } = request.nextUrl;
   const username = searchParams.get("username");
   const size = searchParams.get("size") === "small" ? "small" : "large";
   const themeParam = searchParams.get("theme") as ThemeId | null;
@@ -84,12 +84,20 @@ export async function GET(request: NextRequest) {
   const width = size === "small" ? 480 : 960;
   const height = size === "small" ? 270 : 540;
 
-  console.log(
-    `[OG Request] Username: ${username}, Size: ${size}, Theme: ${theme.id}, Font: ${fontParam}`,
-  );
+  console.log("--- DEBUG START ---");
+  console.log("Original URL:", request.url);
+  console.log("NextURL:", request.nextUrl.href);
+  console.log("Search Params:", [...request.nextUrl.searchParams.entries()]);
+  console.log("Username param:", username);
+  console.log("--- DEBUG END ---");
 
   if (!username) {
-    return new Response("Username is required", { status: 400 });
+    return new Response(
+      `Username is required. Recieved params: ${JSON.stringify(
+        Object.fromEntries(request.nextUrl.searchParams),
+      )}`,
+      { status: 400 },
+    );
   }
 
   if (!process.env.GITHUB_TOKEN) {
@@ -101,6 +109,24 @@ export async function GET(request: NextRequest) {
     console.log("Fetching GitHub data...");
     const data = await fetchGithubData(username);
     console.log("GitHub data fetched successfully");
+
+    // Fetch and embed avatar as base64 to ensure it appears in SVG/PNG
+    // This solves "missing avatar" issues in exported files
+    try {
+      const avatarRes = await fetch(data.avatarUrl);
+      if (avatarRes.ok) {
+        const contentType =
+          avatarRes.headers.get("content-type") || "image/png";
+        const buffer = await avatarRes.arrayBuffer();
+        const base64 = Buffer.from(buffer).toString("base64");
+        data.avatarUrl = `data:${contentType};base64,${base64}`;
+        console.log("Avatar embedded as Base64");
+      } else {
+        console.warn("Failed to fetch avatar for embedding");
+      }
+    } catch (err) {
+      console.warn("Error embedding avatar:", err);
+    }
 
     const fontsData = await loadFonts(fontParam);
     const fontFamily =
@@ -125,8 +151,7 @@ export async function GET(request: NextRequest) {
       },
     ];
 
-    console.log("Generating ImageResponse...");
-    return new ImageResponse(
+    const element = (
       <Wrapper
         size={size}
         width={width}
@@ -139,18 +164,41 @@ export async function GET(request: NextRequest) {
         ) : (
           <LargeCard data={data} theme={theme} fontFamily={fontFamily} />
         )}
-      </Wrapper>,
-      {
+      </Wrapper>
+    );
+
+    const format = searchParams.get("format") || "png";
+
+    if (format === "svg") {
+      console.log("Generating SVG...");
+      const satori = await import("satori").then((mod) => mod.default);
+      const svg = await satori(element, {
         width,
         height,
         fonts,
+      });
+
+      return new Response(svg, {
         headers: {
-          "Content-Type": "image/png",
-          "Content-Disposition": 'inline; filename="fancy-github-card.png"',
+          "Content-Type": "image/svg+xml",
+          "Content-Disposition": 'inline; filename="fancy-github-card.svg"',
           "Cache-Control": "public, max-age=3600, s-maxage=3600",
         },
+      });
+    }
+
+    console.log("Generating PNG...");
+    // ImageResponse uses satori + resvg-wasm under the hood for PNG
+    return new ImageResponse(element, {
+      width,
+      height,
+      fonts,
+      headers: {
+        "Content-Type": "image/png",
+        "Content-Disposition": 'inline; filename="fancy-github-card.png"',
+        "Cache-Control": "public, max-age=3600, s-maxage=3600",
       },
-    );
+    });
   } catch (e: any) {
     console.error("OG Generation Error:", e);
     // Log stack trace if available
@@ -474,9 +522,9 @@ function HeaderContent({
   const desc =
     "description" in data ? data.description : "bio" in data ? data.bio : null;
 
-  const imgSize = size === "small" ? "48" : "96"; // Reduced for 960px width
-  const nameSize = size === "small" ? "20px" : "40px"; // Reduced
-  const subtextSize = size === "small" ? "12px" : "20px"; // Reduced
+  const imgSize = size === "small" ? 48 : 96; // Use numbers for Satori
+  const nameSize = size === "small" ? "20px" : "40px";
+  const subtextSize = size === "small" ? "12px" : "20px";
 
   return (
     <div
@@ -526,7 +574,7 @@ function HeaderContent({
             borderRadius: "50%",
             border: "2px solid rgba(255,255,255,0.9)", // Brighter border
             position: "relative",
-            zIndex: 10,
+            // zIndex removed (not supported in Satori), rely on DOM order
           }}
         />
       </div>
