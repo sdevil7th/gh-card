@@ -61,13 +61,16 @@ export function LanguageBar({
               >
                 {lang.name}
               </span>
-              <span
-                className={`text-slate-500 ${
-                  isSmall ? "text-[8px]" : "text-sm"
-                }`}
-              >
-                {lang.textPercentage}%
-              </span>
+              {typeof lang?.textPercentage === "number" &&
+              lang.textPercentage <= 0 ? null : (
+                <span
+                  className={`text-slate-500 ${
+                    isSmall ? "text-[8px]" : "text-sm"
+                  }`}
+                >
+                  {lang.textPercentage}%
+                </span>
+              )}
             </div>
           ))}
         </div>
