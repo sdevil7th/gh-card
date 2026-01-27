@@ -11,7 +11,7 @@ import { normalizePercentages } from "@/lib/utils/normalization";
 import { Star, GitFork, Eye, Box, Flame, Users } from "lucide-react";
 
 // Force Node.js runtime to avoid Edge issues with env vars
-export const runtime = "edge";
+// export const runtime = "edge"; // Commented out to potentially fix Netlify/Env issues
 
 // Map font IDs to URLs or keep them hardcoded for now
 const fontMap = {
