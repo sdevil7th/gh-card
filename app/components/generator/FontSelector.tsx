@@ -43,7 +43,9 @@ export function FontSelector({
                 ? {
                     backgroundColor: activeTheme.primary,
                     boxShadow: `0 0 15px ${activeTheme.glow}`,
-                    color: "white",
+                    color: ["monochrome", "electric-yellow"].includes(theme)
+                      ? "black"
+                      : "white",
                   }
                 : undefined
             }

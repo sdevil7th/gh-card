@@ -21,7 +21,12 @@ const Button = forwardRef<HTMLButtonElement, CombinedButtonProps>(
       if (variant === "primary") {
         dynamicStyles.backgroundColor = theme.primary;
         dynamicStyles.boxShadow = `0 0 20px ${theme.glow}`;
-        dynamicStyles.color = "white";
+        // Light themes need dark text
+        if (theme.id === "electric-yellow" || theme.id === "monochrome") {
+          dynamicStyles.color = "#000000";
+        } else {
+          dynamicStyles.color = "white";
+        }
       } else if (variant === "secondary") {
         dynamicStyles.backgroundColor = theme.accent;
         dynamicStyles.boxShadow = `0 0 15px ${theme.glow.replace("0.3", "0.15")}`;

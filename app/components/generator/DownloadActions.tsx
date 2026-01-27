@@ -101,7 +101,9 @@ export function DownloadActions({
                   ? {
                       backgroundColor: themes[theme].primary,
                       boxShadow: `0 0 15px ${themes[theme].glow}`,
-                      color: "white",
+                      color: ["monochrome", "electric-yellow"].includes(theme)
+                        ? "black"
+                        : "white",
                     }
                   : undefined
               }
@@ -124,7 +126,9 @@ export function DownloadActions({
                   ? {
                       backgroundColor: themes[theme].primary,
                       boxShadow: `0 0 15px ${themes[theme].glow}`,
-                      color: "white",
+                      color: ["monochrome", "electric-yellow"].includes(theme)
+                        ? "black"
+                        : "white",
                     }
                   : undefined
               }
@@ -156,7 +160,9 @@ export function DownloadActions({
                   ? {
                       backgroundColor: themes[theme].primary,
                       boxShadow: `0 0 15px ${themes[theme].glow}`,
-                      color: "white",
+                      color: ["monochrome", "electric-yellow"].includes(theme)
+                        ? "black"
+                        : "white",
                     }
                   : undefined
               }
@@ -176,7 +182,9 @@ export function DownloadActions({
                   ? {
                       backgroundColor: themes[theme].primary,
                       boxShadow: `0 0 15px ${themes[theme].glow}`,
-                      color: "white",
+                      color: ["monochrome", "electric-yellow"].includes(theme)
+                        ? "black"
+                        : "white",
                     }
                   : undefined
               }
