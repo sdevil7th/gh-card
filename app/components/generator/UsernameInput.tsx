@@ -71,7 +71,7 @@ export function ProfileUrlInput({
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex flex-col w-full max-w-md mx-auto relative z-10 gap-2"
+      className="flex flex-col w-full max-w-xl mx-auto relative z-10 gap-2"
     >
       <div className="flex flex-col sm:flex-row gap-4 items-center">
         <Input
