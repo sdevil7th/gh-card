@@ -87,6 +87,7 @@ export function CardContent({ data, theme, size }: CardContentProps) {
           <ContributionGraph
             days={(data as ProcessedUserData).contributions.calendar}
             type={size}
+            theme={themeConfig}
           />
         )}
       </div>

@@ -68,10 +68,11 @@ export default function Home() {
 
   return (
     <main
-      className="min-h-screen relative flex flex-col items-center p-6 md:p-24 overflow-hidden bg-slate-950 text-slate-100 transition-all duration-500"
+      className="min-h-screen relative flex flex-col items-center py-6 px-0 md:p-24 md:px-0 overflow-hidden bg-slate-950 text-slate-100 transition-all duration-500"
       style={{
         // Global selection color
         ["--selection-color" as any]: selectedTheme.primary,
+        fontFamily: currentFontFamily,
       }}
     >
       <SmoothScroll />
@@ -87,8 +88,8 @@ export default function Home() {
       `}</style>
       <GradientBlob />
 
-      <div className="z-10 flex flex-col items-center w-full max-w-5xl space-y-12">
-        <div className="text-center space-y-4">
+      <div className="z-10 flex flex-col items-center w-full space-y-12">
+        <div className="text-center space-y-4 w-full max-w-5xl px-6">
           <h1 className="text-5xl md:text-7xl font-bold tracking-tighter bg-gradient-to-br from-white to-slate-400 bg-clip-text text-transparent">
             Fancy GitHub Cards
           </h1>
@@ -98,35 +99,42 @@ export default function Home() {
           </p>
         </div>
 
-        <ProfileUrlInput
-          onSubmit={handleSubmit}
-          isLoading={loading}
-          defaultValue={DEMO_USER_URL}
-          theme={theme}
-        />
+        <div className="w-full max-w-5xl px-6 flex justify-center">
+          <ProfileUrlInput
+            onSubmit={handleSubmit}
+            isLoading={loading}
+            defaultValue={DEMO_USER_URL}
+            theme={theme}
+          />
+        </div>
 
         {error && (
-          <GlassPanel className="p-4 text-red-300 border-red-500/20 bg-red-500/10">
-            Error: {error}
-          </GlassPanel>
+          <div className="w-full max-w-5xl px-6 flex justify-center">
+            <GlassPanel className="p-4 text-red-300 border-red-500/20 bg-red-500/10">
+              Error: {error}
+            </GlassPanel>
+          </div>
         )}
 
         {data && (
           <div className="flex flex-col items-center w-full animate-in fade-in zoom-in-95 duration-500">
             <CardPreview data={data} theme={theme} size={size} font={font} />
-            <DownloadActions
-              username={
-                data.type === "repo"
-                  ? `${data.owner}/${data.name}`
-                  : data.username
-              }
-              theme={theme}
-              onThemeChange={setTheme}
-              size={size}
-              onSizeChange={setSize}
-              font={font}
-              onFontChange={setFont}
-            />
+
+            <div className="w-full max-w-5xl px-6 flex justify-center">
+              <DownloadActions
+                username={
+                  data.type === "repo"
+                    ? `${data.owner}/${data.name}`
+                    : data.username
+                }
+                theme={theme}
+                onThemeChange={setTheme}
+                size={size}
+                onSizeChange={setSize}
+                font={font}
+                onFontChange={setFont}
+              />
+            </div>
           </div>
         )}
       </div>

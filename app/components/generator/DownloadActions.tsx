@@ -71,7 +71,7 @@ export function DownloadActions({
   };
 
   return (
-    <div className="flex flex-col items-center w-full max-w-2xl mt-12 gap-8 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
+    <div className="flex flex-col items-center w-full max-w-3xl mt-12 gap-8 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
       {/* Controls Container */}
       <GlassPanel
         intensity="low"
@@ -193,13 +193,13 @@ export function DownloadActions({
       </GlassPanel>
 
       {/* Primary Actions */}
-      <div className="flex gap-4">
+      <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
         <Button
           onClick={downloadImage}
           variant="primary"
           size="lg"
           theme={themes[theme]}
-          className="shadow-lg min-w-[200px]"
+          className="shadow-lg w-full sm:w-auto sm:min-w-[200px]"
         >
           Download {format.toUpperCase()}
         </Button>
@@ -208,6 +208,7 @@ export function DownloadActions({
           variant="outline"
           size="lg"
           theme={themes[theme]}
+          className="w-full sm:w-auto sm:min-w-[200px]"
         >
           Open Preview
         </Button>

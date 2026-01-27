@@ -1,12 +1,15 @@
 import { ProcessedUserData } from "@/lib/github/types";
 import { cn } from "@/lib/utils";
+import { Theme } from "@/lib/themes";
 
 export function ContributionGraph({
   days,
   type,
+  theme,
 }: {
   days: ProcessedUserData["contributions"]["calendar"];
   type: "small" | "large";
+  theme: Theme;
 }) {
   // We only show the last 10 weeks or so to fit
   const weeks = days;
@@ -51,24 +54,38 @@ export function ContributionGraph({
             key={i}
             className={cn("flex flex-col", isSmall ? "gap-[3px]" : "gap-[5px]")}
           >
-            {week.contributionDays.map((day, j) => (
-              <div
-                key={day.date}
-                className={cn(
-                  isSmall ? "h-[5px] w-[5px]" : "h-2 w-2", // 12px is h-3 w-3
-                  isSmall ? "rounded-full" : "rounded-[2px]", // Satori 20px -> full
-                  day.color === "#ebedf0" || day.contributionCount === 0
-                    ? "bg-white/5"
-                    : undefined,
-                )}
-                style={{
-                  backgroundColor:
-                    day.contributionCount > 0 ? day.color : undefined,
-                  opacity: day.contributionCount > 0 ? 0.8 : 1, // Adjust github colors for dark theme
-                }}
-                title={`${day.date}: ${day.contributionCount} contributions`}
-              />
-            ))}
+            {week.contributionDays.map((day, j) => {
+              // Determine intensity or just use primary color for active days
+              const isActive = day.contributionCount > 0;
+
+              // Simple intensity mapping based on count is unreliable without max reference,
+              // so we'll just use the theme primary color with varying opacity if possible,
+              // or just a solid theme color for visual consistency.
+              // For a "neon" feel, varying opacity works well.
+              let opacity = 0.4;
+              if (day.contributionCount > 0) opacity = 0.5;
+              if (day.contributionCount > 2) opacity = 0.7;
+              if (day.contributionCount > 5) opacity = 0.9;
+
+              return (
+                <div
+                  key={day.date}
+                  className={cn(
+                    isSmall ? "h-[5px] w-[5px]" : "h-2 w-2",
+                    isSmall ? "rounded-full" : "rounded-[2px]",
+                    !isActive ? "bg-white/5" : undefined,
+                  )}
+                  style={{
+                    backgroundColor: isActive ? theme.primary : undefined,
+                    opacity: isActive ? opacity : 1,
+                    boxShadow: isActive
+                      ? `0 0 ${isSmall ? "2px" : "4px"} ${theme.primary}`
+                      : "none",
+                  }}
+                  title={`${day.date}: ${day.contributionCount} contributions`}
+                />
+              );
+            })}
           </div>
         ))}
       </div>

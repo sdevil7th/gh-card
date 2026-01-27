@@ -111,8 +111,8 @@ export const themes: Record<ThemeId, Theme> = {
     borderBottom: "rgba(161, 98, 7, 0.3)",
     glow: "rgba(234, 179, 8, 0.3)",
     backgroundTint: "rgba(40, 35, 20, 0.95)",
-    // Yellow, Amber, Lime, White, Brown
-    palette: ["#EAB308", "#F59E0B", "#84CC16", "#FFFFFF", "#713F12"],
+    // Yellow (Darker), Amber (Darker), Lime (Darker), Whiteish, Dark Brown - Better contrast
+    palette: ["#CA8A04", "#D97706", "#65A30D", "#FEF08A", "#78350F"],
   },
   "aqua-cyan": {
     id: "aqua-cyan",

@@ -32,7 +32,7 @@ export function FontSelector({
       <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
         Font Style
       </span>
-      <div className="flex bg-black/20 p-1 rounded-lg w-full max-w-md flex-wrap justify-around">
+      <div className="flex bg-black/20 p-1 rounded-lg w-full max-w-2xl flex-wrap justify-around">
         {fonts.map((font) => (
           <Button
             key={font.id}
