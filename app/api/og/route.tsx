@@ -998,14 +998,17 @@ function LanguageBar({
               >
                 {lang.name}
               </span>
-              <span
-                style={{
-                  fontSize: type === "small" ? "10px" : "14px",
-                  color: "#64748b",
-                }}
-              >
-                {lang.textPercentage ?? Math.round(lang.percentage)}%
-              </span>
+              {typeof lang?.textPercentage === "number" &&
+              lang.textPercentage <= 0 ? null : (
+                <span
+                  style={{
+                    fontSize: type === "small" ? "10px" : "14px",
+                    color: "#64748b",
+                  }}
+                >
+                  {lang.textPercentage ?? Math.round(lang.percentage)}%
+                </span>
+              )}
             </div>
           ))}
         </div>
