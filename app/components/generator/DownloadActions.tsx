@@ -36,7 +36,7 @@ export function DownloadActions({
     setOrigin(window.location.origin);
   }, []);
 
-  const imageUrl = `${origin}/api/og?username=${username}&format=${format}&size=${size}&theme=${theme}&font=${font}`;
+  const imageUrl = `${origin}/github-card.png?username=${username}&format=${format}&size=${size}&theme=${theme}&font=${font}`;
   const repoUrl = `https://github.com/${username}`; // Link to profile for now
 
   const formats = {
