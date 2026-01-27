@@ -1,4 +1,4 @@
-import { ImageResponse } from "@vercel/og";
+import { ImageResponse } from "next/og";
 import { NextRequest } from "next/server";
 import { fetchGithubData } from "@/lib/github/client";
 import {
@@ -10,8 +10,10 @@ import { ThemeId, themes, defaultTheme } from "@/lib/themes";
 import { normalizePercentages } from "@/lib/utils/normalization";
 import { Star, GitFork, Eye, Box, Flame, Users } from "lucide-react";
 
-// Force Node.js runtime to avoid Edge issues with env vars
-// export const runtime = "edge"; // Commented out to potentially fix Netlify/Env issues
+// Runtime configuration:
+// For Netlify, the default Node.js runtime is often more stable for environment variables and fetching.
+// If you specifically need Edge, uncomment the line below.
+// export const runtime = "edge";
 
 // Map font IDs to URLs or keep them hardcoded for now
 const fontMap = {
