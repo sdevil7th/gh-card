@@ -144,6 +144,11 @@ export async function GET(request: NextRequest) {
         width,
         height,
         fonts,
+        headers: {
+          "Content-Type": "image/png",
+          "Content-Disposition": 'inline; filename="fancy-github-card.png"',
+          "Cache-Control": "public, max-age=3600, s-maxage=3600",
+        },
       },
     );
   } catch (e: any) {
